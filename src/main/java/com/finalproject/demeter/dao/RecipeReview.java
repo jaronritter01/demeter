@@ -21,7 +21,7 @@ public class RecipeReview {
     private Integer stars;
 
     public void setStars(Integer stars) throws Exception{
-        if (stars <= 5 || stars >= 1){
+        if (stars <= 5 && stars >= 1){
             this.stars = stars;
         }
         else{
