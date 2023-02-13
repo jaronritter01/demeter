@@ -4,13 +4,14 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
-@Table(name="recipes")
+@Table(name = "favorited_recipes")
 @Data
-public class Recipe {
+public class FavoriteRecipes {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
-    private String name;
-    private String description;
-    private Integer cookTime;
+    @ManyToOne
+    private User user;
+    @ManyToOne
+    private Recipe recipe;
 }
