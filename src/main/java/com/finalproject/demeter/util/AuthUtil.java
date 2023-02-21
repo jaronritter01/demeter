@@ -17,7 +17,7 @@ public class AuthUtil {
     private static Boolean isValidUsername(String username){
         return username.length() > 4 && username.length() < 25 && !Character.isDigit(username.charAt(0));
     }
-    private static Boolean isValidPassword(String password){
+    public static Boolean isValidPassword(String password){
         return password.length() > 8 && password.length() < 25
                 && containsUpperCaseLetter(password) && containsSpecialChar(password);
     }
@@ -36,7 +36,7 @@ public class AuthUtil {
         return SPECIALCHARREGEX.matcher(password).find();
     }
 
-    private static Boolean isValidEmail(String email){
+    public static Boolean isValidEmail(String email){
         return EMAILREGEX.matcher(email).find();
     }
 }
