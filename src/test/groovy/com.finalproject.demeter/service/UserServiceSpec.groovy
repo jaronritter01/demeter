@@ -1,7 +1,9 @@
 package com.finalproject.demeter.service
 
+import com.finalproject.demeter.dao.PasswordResetToken
 import com.finalproject.demeter.dao.User
 import com.finalproject.demeter.dto.SignUpDto
+import com.finalproject.demeter.repository.PasswordTokenRepository
 import com.finalproject.demeter.repository.UserRepository
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -10,18 +12,22 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import spock.lang.Specification
 
+import java.time.temporal.ChronoUnit
+
 class UserServiceSpec extends Specification {
 
     private UserRepository userRepository
     private PasswordEncoder passwordEncoder
     private UserService userService
+    private PasswordTokenRepository passwordTokenRepository
     private User user = new User()
 
 
     void setup(){
         userRepository = Stub(UserRepository.class)
+        passwordTokenRepository = Mock(PasswordTokenRepository.class)
         passwordEncoder = Mock(PasswordEncoder.class)
-        userService = new UserService(userRepository, passwordEncoder)
+        userService = new UserService(userRepository, passwordEncoder, passwordTokenRepository)
         user.username = "jSmith"
         user.password = "testingPassword1!"
         user.firstName = "John"
@@ -108,6 +114,44 @@ class UserServiceSpec extends Specification {
 
         then:
         response.statusCode == HttpStatus.CREATED && response.body == "User registered successfully"
+    }
 
+    def "Given a valid passwordResetToken String, A password reset otken should be created and saved" (){
+        given:
+        String token = UUID.randomUUID().toString()
+
+        when:
+        userService.createPasswordResetTokenForUser(user, token)
+
+        then:
+        1 * passwordTokenRepository.save(_)
+    }
+
+    def "Given a valid token, isTokenValid should return true"() {
+        given:
+        String token = UUID.randomUUID().toString()
+        PasswordResetToken pToken = new PasswordResetToken(user, token)
+        passwordTokenRepository.findByToken(token) >> Optional.of(pToken)
+
+        when:
+        Boolean isValid = userService.isTokenValid(token)
+
+        then:
+        isValid
+    }
+
+    def "Given an invalid token, isTokenValid should return false"() {
+        given:
+        String token = UUID.randomUUID().toString()
+        PasswordResetToken pToken = new PasswordResetToken(user, token)
+        Date newDate = Date.from(pToken.getExpiryDate().toInstant().minus(1, ChronoUnit.HOURS))
+        pToken.setExpiryDate(newDate)
+        passwordTokenRepository.findByToken(token) >> Optional.of(pToken)
+
+        when:
+        Boolean isValid = userService.isTokenValid(token)
+
+        then:
+        !isValid
     }
 }

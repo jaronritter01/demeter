@@ -1,7 +1,9 @@
 package com.finalproject.demeter.service;
 
+import com.finalproject.demeter.dao.PasswordResetToken;
 import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.SignUpDto;
+import com.finalproject.demeter.repository.PasswordTokenRepository;
 import com.finalproject.demeter.repository.UserRepository;
 import com.finalproject.demeter.util.AuthUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +16,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Calendar;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -22,15 +26,18 @@ public class UserService implements UserDetailsService {
 
     private PasswordEncoder passwordEncoder;
     private UserRepository userRepository;
+    private PasswordTokenRepository passwordTokenRepository;
 
     private final Set<SimpleGrantedAuthority> authorities = new HashSet<>(){{
         add(new SimpleGrantedAuthority("user"));
     }};
 
     @Autowired
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder){
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                       PasswordTokenRepository passwordTokenRepository){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.passwordTokenRepository = passwordTokenRepository;
     }
 
     @Override
@@ -69,10 +76,44 @@ public class UserService implements UserDetailsService {
         user.setFirstName(signUpDto.getFirstName());
         user.setLastName(signUpDto.getLastName());
         user.setUsername(signUpDto.getUsername());
-        user.setEmail(signUpDto.getEmail());
+        user.setEmail(signUpDto.getEmail().toLowerCase());
         // Hash password
         user.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
         userRepository.save(user);
     }
 
+    public Optional<User> findUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    public void createPasswordResetTokenForUser(User user, String token) {
+        PasswordResetToken myToken = new PasswordResetToken(user, token);
+        passwordTokenRepository.save(myToken);
+    }
+
+    public boolean isTokenValid(String token) {
+        Optional<PasswordResetToken> pToken = passwordTokenRepository.findByToken(token);
+        if (pToken.isPresent()){
+            return !isTokenExpired(pToken.get());
+        }
+        return false;
+    }
+
+    public Optional<User> findUserByToken(String token){
+        Optional<PasswordResetToken> pToken = passwordTokenRepository.findByToken(token);
+        if (pToken.isPresent()) {
+            return Optional.of(pToken.get().getUser());
+        }
+        return Optional.ofNullable(null);
+    }
+
+    private boolean isTokenExpired(PasswordResetToken passToken) {
+        final Calendar cal = Calendar.getInstance();
+        return passToken.getExpiryDate().before(cal.getTime());
+    }
+
+    public void updateUserPassword(User user, String pass) {
+        user.setPassword(passwordEncoder.encode(pass));
+        userRepository.save(user);
+    }
 }

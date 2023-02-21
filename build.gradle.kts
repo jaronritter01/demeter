@@ -17,7 +17,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-web")
-	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-starter-mail:3.0.2")
+	implementation("com.sun.activation:jakarta.activation:2.0.1")
 	implementation("io.jsonwebtoken:jjwt:0.2")
 	implementation("javax.xml.bind:jaxb-api:2.2.4")
 	// Logging
