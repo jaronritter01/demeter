@@ -3,7 +3,9 @@ package com.finalproject.demeter.dao;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
 @Data
 @Entity
 @Table(name = "inventory_items")

@@ -8,7 +8,6 @@ public class AuthUtil {
     private static final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+,:;=?@#|'<>.^*()%!-]");
     private static final Pattern EMAILREGEX = Pattern.compile("^(?=.{1,64}@)[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*@"
             + "[^-][A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$");
-
     public static Boolean isValidUser(SignUpDto user){
         return isValidPassword(user.getPassword()) && isValidEmail(user.getEmail())
                 && isValidUsername(user.getUsername());

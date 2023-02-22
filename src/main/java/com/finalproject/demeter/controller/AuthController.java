@@ -1,6 +1,6 @@
 package com.finalproject.demeter.controller;
 
-import com.finalproject.demeter.config.JwtUtil;
+import com.finalproject.demeter.util.JwtUtil;
 import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.LoginDto;
 import com.finalproject.demeter.dto.PasswordUpdate;
