@@ -1,6 +1,7 @@
 package com.finalproject.demeter.config;
 
 import com.finalproject.demeter.service.UserService;
+import com.finalproject.demeter.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

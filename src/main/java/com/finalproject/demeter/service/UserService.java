@@ -1,11 +1,17 @@
 package com.finalproject.demeter.service;
 
+import com.finalproject.demeter.dao.FoodItem;
+import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.PasswordResetToken;
 import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.SignUpDto;
+import com.finalproject.demeter.dto.UpdateInventory;
+import com.finalproject.demeter.repository.FoodItemRepository;
+import com.finalproject.demeter.repository.InventoryRepository;
 import com.finalproject.demeter.repository.PasswordTokenRepository;
 import com.finalproject.demeter.repository.UserRepository;
 import com.finalproject.demeter.util.AuthUtil;
+import com.finalproject.demeter.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,17 +22,16 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Calendar;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class UserService implements UserDetailsService {
-
+    private JwtUtil jwtUtil = new JwtUtil();
     private PasswordEncoder passwordEncoder;
     private UserRepository userRepository;
     private PasswordTokenRepository passwordTokenRepository;
+    private FoodItemRepository foodItemRepository;
+    private InventoryRepository inventoryRepository;
 
     private final Set<SimpleGrantedAuthority> authorities = new HashSet<>(){{
         add(new SimpleGrantedAuthority("user"));
@@ -34,10 +39,19 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                       PasswordTokenRepository passwordTokenRepository){
+                       PasswordTokenRepository passwordTokenRepository, FoodItemRepository foodItemRepository,
+                       InventoryRepository inventoryRepository){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordTokenRepository = passwordTokenRepository;
+        this.foodItemRepository = foodItemRepository;
+        this.inventoryRepository = inventoryRepository;
+    }
+
+    public Optional<User> getUserFromJwtToken(String jwtToken){
+        String email = jwtUtil.extractEmail(jwtToken.substring(7));
+        User user = userRepository.findByEmail(email).get();
+        return Optional.ofNullable(user);
     }
 
     @Override
@@ -115,5 +129,42 @@ public class UserService implements UserDetailsService {
     public void updateUserPassword(User user, String pass) {
         user.setPassword(passwordEncoder.encode(pass));
         userRepository.save(user);
+    }
+
+    public ResponseEntity<String> updateInventory(User user, UpdateInventory inventoryItem) {
+        List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
+        InventoryItem foundItem = null;
+        // This could likely be optimized
+        for (InventoryItem item : inventory)
+            if (item.getFoodId().getId() == inventoryItem.getFoodId()) {
+                foundItem = item;
+        }
+
+        if (foundItem != null){
+            Float currentQuantity = foundItem.getQuantity();
+            if (inventoryItem.getQuantity() > currentQuantity) {
+                return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
+            }
+            foundItem.setQuantity(currentQuantity + inventoryItem.getQuantity());
+        } else {
+            // The user does not have the item in their current inventory
+            if (inventoryItem.getQuantity() <= 0) { // and the added value is invalid
+                return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
+            }
+            Optional<FoodItem> newItem = foodItemRepository.findById(inventoryItem.getFoodId());
+            if (!newItem.isPresent()) {
+                return new ResponseEntity("The given item does not exist", HttpStatus.NO_CONTENT);
+            }
+            foundItem = new InventoryItem(
+                    user, newItem.get(), inventoryItem.getQuantity(), inventoryItem.getUnit()
+            );
+        }
+
+        inventoryRepository.save(foundItem);
+        return new ResponseEntity("Inventory was saved", HttpStatus.OK);
+    }
+
+    public List<InventoryItem> getInventory(User user) {
+        return inventoryRepository.findInventoryItemByUserId(user);
     }
 }

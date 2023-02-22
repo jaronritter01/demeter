@@ -3,11 +3,20 @@ package com.finalproject.demeter.dao;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
 @Data
 @Entity
 @Table(name = "inventory_items")
 public class InventoryItem {
+
+    public InventoryItem(User user, FoodItem foodItem, Float quantity, String unit) {
+        this.userId = user;
+        this.foodId = foodItem;
+        this.quantity = quantity;
+        this.unit = unit;
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
