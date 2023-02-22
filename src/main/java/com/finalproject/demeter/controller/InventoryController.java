@@ -32,7 +32,8 @@ public class InventoryController {
     public ResponseEntity<?> updateInventory(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody UpdateInventory item) {
         Optional<User> user = userService.getUserFromJwtToken(jwt);
         ResponseEntity response = userService.updateInventory(user.get(), item);
-        if (response.getBody().equals("Inventory was saved")) {
+        if (response.getBody().equals("Inventory was saved") ||
+                response.getBody().equals("Inventory Item was Removed")) {
             List<InventoryItem> inventory = userService.getInventory(user.get());
             return new ResponseEntity(inventory, HttpStatus.OK);
         }

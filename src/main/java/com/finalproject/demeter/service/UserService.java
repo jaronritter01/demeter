@@ -145,7 +145,12 @@ public class UserService implements UserDetailsService {
             if (inventoryItem.getQuantity() > currentQuantity) {
                 return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
             }
-            foundItem.setQuantity(currentQuantity + inventoryItem.getQuantity());
+            if (currentQuantity + inventoryItem.getQuantity() == 0) {
+                inventoryRepository.delete(foundItem);
+                return new ResponseEntity("Inventory Item was Removed", HttpStatus.OK);
+            } else {
+                foundItem.setQuantity(currentQuantity + inventoryItem.getQuantity());
+            }
         } else {
             // The user does not have the item in their current inventory
             if (inventoryItem.getQuantity() <= 0) { // and the added value is invalid
@@ -155,9 +160,14 @@ public class UserService implements UserDetailsService {
             if (!newItem.isPresent()) {
                 return new ResponseEntity("The given item does not exist", HttpStatus.NO_CONTENT);
             }
-            foundItem = new InventoryItem(
-                    user, newItem.get(), inventoryItem.getQuantity(), inventoryItem.getUnit()
-            );
+            if (inventoryItem.getUnit().equals("")) {
+                return new ResponseEntity("Invalid Unit", HttpStatus.BAD_REQUEST);
+            }
+            foundItem = new InventoryItem();
+            foundItem.setUserId(user);
+            foundItem.setFoodId(newItem.get());
+            foundItem.setQuantity(inventoryItem.getQuantity());
+            foundItem.setUnit(inventoryItem.getUnit());
         }
 
         inventoryRepository.save(foundItem);
