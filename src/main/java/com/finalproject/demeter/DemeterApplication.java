@@ -9,5 +9,4 @@ public class DemeterApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(DemeterApplication.class, args);
 	}
-
 }
