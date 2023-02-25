@@ -1,8 +1,10 @@
 package com.finalproject.demeter.service;
 
 import com.finalproject.demeter.dao.Recipe;
+import com.finalproject.demeter.dao.RecipeItem;
 import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
+import com.finalproject.demeter.repository.RecipeItemRepository;
 import com.finalproject.demeter.repository.RecipeRepository;
 import com.finalproject.demeter.util.MapBuilder;
 import com.finalproject.demeter.util.PaginationSettingBuilder;
@@ -25,6 +27,7 @@ import java.util.regex.Pattern;
 @Service
 public class RecipeService {
     private RecipeRepository recipeRepository;
+    private RecipeItemRepository recipeItemRepository;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
     private static final PaginationSetting DEFAULT_PAGE = new PaginationSettingBuilder()
@@ -65,8 +68,9 @@ public class RecipeService {
             .put("default", QueryMethod.DEFAULT)
             .build();
 
-    public RecipeService(RecipeRepository recipeRepository) {
+    public RecipeService(RecipeRepository recipeRepository, RecipeItemRepository recipeItemRepository) {
         this.recipeRepository = recipeRepository;
+        this.recipeItemRepository = recipeItemRepository;
     }
 
     public List<Recipe> getAllRecipes(PaginationSetting pageSettings) {
@@ -74,6 +78,20 @@ public class RecipeService {
         List<Recipe> returnList = new ArrayList<>();
         recipeRepository.findAll(page).forEach(recipe -> returnList.add(recipe));
         return returnList;
+    }
+
+    // Needs testing
+    public ResponseEntity<?> getRecipeItemsById(Long id) {
+        Optional<Recipe> recipe = recipeRepository.findById(id);
+        if (recipe.isPresent()){
+            Optional<List<RecipeItem>> recipeItemList = recipeItemRepository.findRecipeItemsByRecipe(recipe.get());
+            if (recipeItemList.isPresent()){
+                return new ResponseEntity(recipeItemList, HttpStatus.OK);
+            }
+
+            return new ResponseEntity("No Recipe Items Found", HttpStatus.NO_CONTENT);
+        }
+        return new ResponseEntity("Recipe Not Found", HttpStatus.NO_CONTENT);
     }
 
     public PaginationSetting getPaginationSettings(HashMap<String, HashMap<String, String>> objs) {

@@ -23,6 +23,11 @@ public class RecipeController {
     List<Recipe> getAllRecipes(@RequestBody PaginationSetting pageSettings) {
         return recipeService.getAllRecipes(pageSettings);
     }
+
+    @GetMapping("/getRecipeItems")
+    public ResponseEntity<?> getRecipeItemsByRecipeId(@RequestParam Long id) {
+        return recipeService.getRecipeItemsById(id);
+    }
     @GetMapping("/getRecipe")
     public ResponseEntity<?> getRecipeById(@RequestParam Long id) {
         return recipeService.getRecipeById(id);

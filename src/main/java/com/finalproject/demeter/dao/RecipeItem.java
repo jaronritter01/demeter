@@ -1,5 +1,6 @@
 package com.finalproject.demeter.dao;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -12,6 +13,7 @@ public class RecipeItem {
     private long id;
     @ManyToOne
     private FoodItem foodItem;
+    @JsonIgnore
     @ManyToOne
     private Recipe recipe;
     private String measurementUnit;
