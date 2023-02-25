@@ -10,6 +10,7 @@ import com.finalproject.demeter.util.RecipeBuilder;
 import com.finalproject.demeter.util.RecipeQueryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -110,9 +110,24 @@ public class RecipeService {
         return DEFAULT_QUERY;
     }
 
+    private <T> List<T> pageToList(Page<T> page){
+        List<T> returnList = new ArrayList<>();
+        page.forEach(item -> returnList.add(item));
+        return returnList;
+    }
+
+    private HashMap<String, Object> createReturnMap(Page<Recipe> results) {
+        HashMap<String, Object> returnMap = new HashMap<>();
+        List<Recipe> recipeList = pageToList(results);
+        returnMap.put("count", results.getTotalPages());
+        returnMap.put("results", recipeList);
+        return returnMap;
+    }
+
     public ResponseEntity<?> getQueriedRecipes(RecipeQuery query, PaginationSetting pageSettings) {
         QueryMethod method = queryMap.get(query.getMethod().toLowerCase());
         Pageable page = PageRequest.of(pageSettings.getPageNumber(), pageSettings.getPageSize());
+
         if (method == null) {
             return new ResponseEntity("Invalid Method", HttpStatus.BAD_REQUEST);
         }
@@ -123,30 +138,37 @@ public class RecipeService {
                 if (specMatch.find()) {
                     return new ResponseEntity("Invalid Query", HttpStatus.BAD_REQUEST);
                 }
-                return new ResponseEntity(recipeRepository.findRecipeLike(query.getValue(), page), HttpStatus.OK);
+                Page<Recipe> results = recipeRepository.findRecipeLike(query.getValue(), page);
+                HashMap<String, Object> returnMap = createReturnMap(results);
+                return new ResponseEntity(returnMap, HttpStatus.OK);
             }
             case LESS: {
                 try {
-                    List<Recipe> recipeList = recipeRepository.findRecipeWithTimeLess(
+                    Page<Recipe> results = recipeRepository.findRecipeWithTimeLess(
                             Integer.parseInt(query.getValue()), page
                     );
-                    return new ResponseEntity(recipeList, HttpStatus.OK);
+                    HashMap<String, Object> returnMap = createReturnMap(results);
+                    return new ResponseEntity(returnMap, HttpStatus.OK);
                 } catch (Exception e) {
                     return new ResponseEntity("Please pass a valid number", HttpStatus.BAD_REQUEST);
                 }
             }
             case MORE: {
                 try {
-                    List<Recipe> recipeList = recipeRepository.findRecipeWithTimeMore(
+                    Page<Recipe> results = recipeRepository.findRecipeWithTimeMore(
                             Integer.parseInt(query.getValue()), page
                     );
-                    return new ResponseEntity(recipeList, HttpStatus.OK);
+                    HashMap<String, Object> returnMap = createReturnMap(results);
+                    return new ResponseEntity(returnMap, HttpStatus.OK);
                 } catch (Exception e) {
                     return new ResponseEntity("Please pass a valid number", HttpStatus.BAD_REQUEST);
                 }
             }
             case DEFAULT: {
-                return new ResponseEntity(DEFAULT_RECIPE_LIST, HttpStatus.OK);
+                HashMap<String, Object> returnMap = new HashMap<>();
+                returnMap.put("count", 1);
+                returnMap.put("results", DEFAULT_RECIPE_LIST);
+                return new ResponseEntity(returnMap, HttpStatus.OK);
             }
             default: {
                 // This is unreachable in theory
