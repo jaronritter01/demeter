@@ -91,4 +91,12 @@ class RecipeServiceSpec extends Specification{
         then:
         response.getStatusCode() == HttpStatus.BAD_REQUEST && response.body == "Please pass a valid number"
     }
+
+    def "the default query is invoked" () {
+        when:
+        ResponseEntity response = recipeService.getQueriedRecipes(RecipeService.DEFAULT_QUERY, RecipeService.DEFAULT_PAGE)
+
+        then:
+        response.getStatusCode() == HttpStatus.OK && response.body instanceof HashMap
+    }
 }

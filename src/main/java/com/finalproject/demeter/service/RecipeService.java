@@ -36,7 +36,7 @@ public class RecipeService {
             .build();
 
     private static final RecipeQuery DEFAULT_QUERY = new RecipeQueryBuilder()
-            .method("name")
+            .method("default")
             .value("default")
             .build();
 
