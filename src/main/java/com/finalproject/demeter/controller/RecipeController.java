@@ -23,9 +23,13 @@ public class RecipeController {
     List<Recipe> getAllRecipes(@RequestBody PaginationSetting pageSettings) {
         return recipeService.getAllRecipes(pageSettings);
     }
+    @GetMapping("/getRecipe")
+    public ResponseEntity<?> getRecipeById(@RequestParam Long id) {
+        return recipeService.getRecipeById(id);
+    }
 
     @PostMapping("/queryRecipes")
-    ResponseEntity<?> queryRecipes(@RequestBody HashMap<String, HashMap<String, String>> requestObject) {
+    public ResponseEntity<?> queryRecipes(@RequestBody HashMap<String, HashMap<String, String>> requestObject) {
         PaginationSetting pageSetting = recipeService.getPaginationSettings(requestObject);
         RecipeQuery query = recipeService.getRecipeQuery(requestObject);
         return recipeService.getQueriedRecipes(query, pageSetting);

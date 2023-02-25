@@ -8,6 +8,7 @@ import com.finalproject.demeter.util.MapBuilder;
 import com.finalproject.demeter.util.PaginationSettingBuilder;
 import com.finalproject.demeter.util.RecipeBuilder;
 import com.finalproject.demeter.util.RecipeQueryBuilder;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -18,10 +19,7 @@ import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -114,6 +112,15 @@ public class RecipeService {
         List<T> returnList = new ArrayList<>();
         page.forEach(item -> returnList.add(item));
         return returnList;
+    }
+
+    // Write tests for this
+    public ResponseEntity<?> getRecipeById(Long id) {
+        Optional<Recipe> recipe = recipeRepository.findById(id);
+        if (recipe.isPresent()){
+            return new ResponseEntity(recipe.get(), HttpStatus.OK);
+        }
+        return new ResponseEntity("Recipe does not exist", HttpStatus.NOT_FOUND);
     }
 
     private HashMap<String, Object> createReturnMap(Page<Recipe> results) {
