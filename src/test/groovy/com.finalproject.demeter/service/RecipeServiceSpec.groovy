@@ -30,10 +30,10 @@ class RecipeServiceSpec extends Specification{
         ResponseEntity response = recipeService.getQueriedRecipes(rq)
 
         then:
-        response.getStatusCode() == HttpStatus.BAD_REQUEST
+        response.getStatusCode() == HttpStatus.BAD_REQUEST && response.body == "Invalid Method"
     }
 
-    def "when a valid method def is passed, a 200 and a list should be returned" () {
+    def "when a valid method def (less) is passed, a 200 and a list should be returned" () {
         given:
         RecipeQuery rq = new RecipeQuery()
         rq.setMethod("lesstime")
@@ -47,12 +47,40 @@ class RecipeServiceSpec extends Specification{
         response.getStatusCode() == HttpStatus.OK && response.body instanceof List<Recipe>
     }
 
-    def "when a valid method def and an invalid value is passed, a 200 and a list should be returned" () {
+    def "when a valid method def (less) and an invalid value is passed, a 400" () {
         given:
         RecipeQuery rq = new RecipeQuery()
         rq.setMethod("lesstime")
         rq.setValue("asdf")
         recipeRepository.findRecipeWithTimeLess(_) >> {throw new NumberFormatException()}
+
+        when:
+        ResponseEntity response = recipeService.getQueriedRecipes(rq)
+
+        then:
+        response.getStatusCode() == HttpStatus.BAD_REQUEST && response.body == "Please pass a valid number"
+    }
+
+    def "when a valid method def (more) is passed, a 200 and a list should be returned" () {
+        given:
+        RecipeQuery rq = new RecipeQuery()
+        rq.setMethod("moretime")
+        rq.setValue("2")
+        recipeRepository.findRecipeWithTimeMore(_) >> new ArrayList<Recipe>()
+
+        when:
+        ResponseEntity response = recipeService.getQueriedRecipes(rq)
+
+        then:
+        response.getStatusCode() == HttpStatus.OK && response.body instanceof List<Recipe>
+    }
+
+    def "when a valid method def (more) and an invalid value is passed, a 400" () {
+        given:
+        RecipeQuery rq = new RecipeQuery()
+        rq.setMethod("moretime")
+        rq.setValue("asdf")
+        recipeRepository.findRecipeWithTimeMore(_) >> {throw new NumberFormatException()}
 
         when:
         ResponseEntity response = recipeService.getQueriedRecipes(rq)
