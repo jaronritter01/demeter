@@ -3,7 +3,6 @@ package com.finalproject.demeter.service
 import com.finalproject.demeter.dao.Recipe
 import com.finalproject.demeter.dto.RecipeQuery
 import com.finalproject.demeter.repository.RecipeRepository
-import org.apache.coyote.Response
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import spock.lang.Specification
