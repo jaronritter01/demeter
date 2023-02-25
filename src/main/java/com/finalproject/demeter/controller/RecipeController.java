@@ -1,11 +1,13 @@
 package com.finalproject.demeter.controller;
 
 import com.finalproject.demeter.dao.Recipe;
+import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
 import com.finalproject.demeter.service.RecipeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 
 @RestController
@@ -17,13 +19,19 @@ public class RecipeController {
         this.recipeService = recipeService;
     }
 
-    @GetMapping
-    List<Recipe> getAllRecipes() {
-        return recipeService.getAllRecipes();
+    @PostMapping
+    List<Recipe> getAllRecipes(@RequestBody PaginationSetting pageSettings) {
+        return recipeService.getAllRecipes(pageSettings);
+    }
+    @GetMapping("/getRecipe")
+    public ResponseEntity<?> getRecipeById(@RequestParam Long id) {
+        return recipeService.getRecipeById(id);
     }
 
     @PostMapping("/queryRecipes")
-    ResponseEntity<?> queryRecipes(@RequestBody RecipeQuery query) {
-        return recipeService.getQueriedRecipes(query);
+    public ResponseEntity<?> queryRecipes(@RequestBody HashMap<String, HashMap<String, String>> requestObject) {
+        PaginationSetting pageSetting = recipeService.getPaginationSettings(requestObject);
+        RecipeQuery query = recipeService.getRecipeQuery(requestObject);
+        return recipeService.getQueriedRecipes(query, pageSetting);
     }
 }

@@ -23,7 +23,8 @@ dependencies {
 	implementation("javax.xml.bind:jaxb-api:2.2.4")
 	// Logging
 	implementation("org.springframework.boot:spring-boot-starter-log4j2:3.0.2")
-	compileOnly("org.projectlombok:lombok")
+    implementation("org.jetbrains:annotations:20.1.0")
+    compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.projectlombok:lombok")
 	runtimeOnly("org.postgresql:postgresql")
