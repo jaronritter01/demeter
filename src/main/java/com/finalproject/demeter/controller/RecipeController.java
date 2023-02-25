@@ -24,11 +24,6 @@ public class RecipeController {
         return recipeService.getAllRecipes(pageSettings);
     }
 
-//    @PostMapping("/queryRecipes")
-//    ResponseEntity<?> queryRecipes(@RequestBody RecipeQuery query) {
-//        return recipeService.getQueriedRecipes(query);
-//    }
-
     @PostMapping("/queryRecipes")
     ResponseEntity<?> queryRecipes(@RequestBody HashMap<String, HashMap<String, String>> requestObject) {
         PaginationSetting pageSetting = recipeService.getPaginationSettings(requestObject);
