@@ -1,10 +1,10 @@
 package com.finalproject.demeter.controller;
 
+import com.finalproject.demeter.dao.InventoryItem;
+import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.UpdateInventory;
 import com.finalproject.demeter.service.UserService;
 import com.finalproject.demeter.util.JwtUtil;
-import com.finalproject.demeter.dao.InventoryItem;
-import com.finalproject.demeter.dao.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,5 @@
 package com.finalproject.demeter.controller;
 
-import com.finalproject.demeter.util.JwtUtil;
 import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.LoginDto;
 import com.finalproject.demeter.dto.PasswordUpdate;
@@ -8,6 +7,7 @@ import com.finalproject.demeter.dto.SignUpDto;
 import com.finalproject.demeter.service.MailService;
 import com.finalproject.demeter.service.UserService;
 import com.finalproject.demeter.util.AuthUtil;
+import com.finalproject.demeter.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,7 +19,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
 import java.util.UUID;
