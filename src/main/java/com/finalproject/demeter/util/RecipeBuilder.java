@@ -25,6 +25,16 @@ public class RecipeBuilder {
         return this;
     }
 
+    public RecipeBuilder avgRating(Float val) {
+        recipe.setAvgRating(val);
+        return this;
+    }
+
+    public RecipeBuilder reviewCount(Long val){
+        recipe.setReviewCount(val);
+        return this;
+    }
+
     public Recipe build() {
         return recipe;
     }
