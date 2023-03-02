@@ -5,6 +5,7 @@ import com.finalproject.demeter.dao.RecipeItem;
 import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
 import com.finalproject.demeter.repository.RecipeItemRepository;
+import com.finalproject.demeter.repository.RecipeRatingRepository;
 import com.finalproject.demeter.repository.RecipeRepository;
 import com.finalproject.demeter.util.MapBuilder;
 import com.finalproject.demeter.util.PaginationSettingBuilder;
@@ -28,6 +29,7 @@ import java.util.regex.Pattern;
 public class RecipeService {
     private RecipeRepository recipeRepository;
     private RecipeItemRepository recipeItemRepository;
+    private RecipeRatingRepository recipeRatingRepository;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
     private static final PaginationSetting DEFAULT_PAGE = new PaginationSettingBuilder()
@@ -45,6 +47,8 @@ public class RecipeService {
             .name("Default Recipe")
             .description("Default Description")
             .cookTime(60)
+            .avgRating(0F)
+            .reviewCount(0L)
             .build();
 
     // Usually you should not do this
@@ -68,15 +72,33 @@ public class RecipeService {
             .put("default", QueryMethod.DEFAULT)
             .build();
 
-    public RecipeService(RecipeRepository recipeRepository, RecipeItemRepository recipeItemRepository) {
+    public RecipeService(RecipeRepository recipeRepository, RecipeItemRepository recipeItemRepository,
+                         RecipeRatingRepository recipeRatingRepository) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
+        this.recipeRatingRepository = recipeRatingRepository;
+    }
+
+    private void setRecipeRatings (Recipe recipe){
+        Optional<Long> count = recipeRatingRepository.countByRecipeId(recipe.getId());
+        count.ifPresentOrElse(
+                recCount -> recipe.setReviewCount(recCount),
+                () -> recipe.setReviewCount(0L)
+        );
+        Optional<Float> rating = recipeRatingRepository.getAverageReviewByRecipeId(recipe.getId());
+        rating.ifPresentOrElse(
+                avgRating -> recipe.setAvgRating(avgRating),
+                () -> recipe.setAvgRating(0F)
+        );
     }
 
     public List<Recipe> getAllRecipes(PaginationSetting pageSettings) {
         Pageable page = PageRequest.of(pageSettings.getPageNumber(), pageSettings.getPageSize());
         List<Recipe> returnList = new ArrayList<>();
-        recipeRepository.findAll(page).forEach(recipe -> returnList.add(recipe));
+        recipeRepository.findAll(page).forEach(recipe -> {
+            setRecipeRatings(recipe);
+            returnList.add(recipe);
+        });
         return returnList;
     }
 
@@ -134,7 +156,9 @@ public class RecipeService {
     // Write tests for this
     public ResponseEntity<?> getRecipeById(Long id) {
         Optional<Recipe> recipe = recipeRepository.findById(id);
+        // TODO: calculate the average stars
         if (recipe.isPresent()){
+            setRecipeRatings(recipe.get());
             return new ResponseEntity(recipe.get(), HttpStatus.OK);
         }
         return new ResponseEntity("Recipe does not exist", HttpStatus.NOT_FOUND);
@@ -163,6 +187,7 @@ public class RecipeService {
                     return new ResponseEntity("Invalid Query", HttpStatus.BAD_REQUEST);
                 }
                 Page<Recipe> results = recipeRepository.findRecipeLike(query.getValue(), page);
+                results.forEach(recipe -> setRecipeRatings(recipe));
                 HashMap<String, Object> returnMap = createReturnMap(results);
                 return new ResponseEntity(returnMap, HttpStatus.OK);
             }
@@ -171,6 +196,7 @@ public class RecipeService {
                     Page<Recipe> results = recipeRepository.findRecipeWithTimeLess(
                             Integer.parseInt(query.getValue()), page
                     );
+                    results.forEach(recipe -> setRecipeRatings(recipe));
                     HashMap<String, Object> returnMap = createReturnMap(results);
                     return new ResponseEntity(returnMap, HttpStatus.OK);
                 } catch (Exception e) {
@@ -182,6 +208,7 @@ public class RecipeService {
                     Page<Recipe> results = recipeRepository.findRecipeWithTimeMore(
                             Integer.parseInt(query.getValue()), page
                     );
+                    results.forEach(recipe -> setRecipeRatings(recipe));
                     HashMap<String, Object> returnMap = createReturnMap(results);
                     return new ResponseEntity(returnMap, HttpStatus.OK);
                 } catch (Exception e) {
