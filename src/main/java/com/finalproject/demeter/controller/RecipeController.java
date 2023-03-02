@@ -33,7 +33,6 @@ public class RecipeController {
         return recipeService.getRecipeById(id);
     }
 
-    @CrossOrigin(origins = "http://localhost:8081")
     @PostMapping("/queryRecipes")
     public ResponseEntity<?> queryRecipes(@RequestBody HashMap<String, HashMap<String, String>> requestObject) {
         PaginationSetting pageSetting = recipeService.getPaginationSettings(requestObject);
