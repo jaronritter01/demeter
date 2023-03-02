@@ -49,7 +49,7 @@ public class SecurityConfig {
                                 .and()
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 );
-
+        http.cors();
         return http.build();
     }
 
