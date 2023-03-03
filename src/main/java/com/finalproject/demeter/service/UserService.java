@@ -1,17 +1,14 @@
 package com.finalproject.demeter.service;
 
-import com.finalproject.demeter.dao.FoodItem;
-import com.finalproject.demeter.dao.InventoryItem;
-import com.finalproject.demeter.dao.PasswordResetToken;
-import com.finalproject.demeter.dao.User;
+import com.finalproject.demeter.dao.*;
 import com.finalproject.demeter.dto.SignUpDto;
 import com.finalproject.demeter.dto.UpdateInventory;
-import com.finalproject.demeter.repository.FoodItemRepository;
-import com.finalproject.demeter.repository.InventoryRepository;
-import com.finalproject.demeter.repository.PasswordTokenRepository;
-import com.finalproject.demeter.repository.UserRepository;
+import com.finalproject.demeter.repository.*;
 import com.finalproject.demeter.util.AuthUtil;
 import com.finalproject.demeter.util.JwtUtil;
+import com.finalproject.demeter.util.MinorItemBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +29,8 @@ public class UserService implements UserDetailsService {
     private PasswordTokenRepository passwordTokenRepository;
     private FoodItemRepository foodItemRepository;
     private InventoryRepository inventoryRepository;
+    private MinorItemRepository minorItemRepository;
+    private Logger LOGGER = LoggerFactory.getLogger(UserService.class);
 
     private final Set<SimpleGrantedAuthority> authorities = new HashSet<>(){{
         add(new SimpleGrantedAuthority("user"));
@@ -40,12 +39,13 @@ public class UserService implements UserDetailsService {
     @Autowired
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        PasswordTokenRepository passwordTokenRepository, FoodItemRepository foodItemRepository,
-                       InventoryRepository inventoryRepository){
+                       InventoryRepository inventoryRepository, MinorItemRepository minorItemRepository){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordTokenRepository = passwordTokenRepository;
         this.foodItemRepository = foodItemRepository;
         this.inventoryRepository = inventoryRepository;
+        this.minorItemRepository = minorItemRepository;
     }
 
     public Optional<User> getUserFromJwtToken(String jwtToken){
@@ -124,6 +124,36 @@ public class UserService implements UserDetailsService {
     private boolean isTokenExpired(PasswordResetToken passToken) {
         final Calendar cal = Calendar.getInstance();
         return passToken.getExpiryDate().before(cal.getTime());
+    }
+    
+    public ResponseEntity<String> markFoodItem(String jwtToken, Long itemId, String mark) {
+        Optional<User> userOpt = getUserFromJwtToken(jwtToken);
+        try {
+            userOpt.ifPresent(user -> {
+                Optional<FoodItem> foodItem = foodItemRepository.findById(itemId);
+                if (foodItem.isPresent()) {
+                    MinorItem newItem = new MinorItemBuilder().user(user).foodItem(foodItem.get()).build();
+                    if (mark.equalsIgnoreCase("add")) {
+                        minorItemRepository.save(newItem);
+                    } else if (mark.equalsIgnoreCase("remove")) {
+                        List<MinorItem> markedItems = minorItemRepository.findMinorItemsByUser(user);
+                        markedItems.forEach(markedItem -> {
+                            if (markedItem.getFoodItem().getId() == itemId) {
+                                minorItemRepository.delete(markedItem);
+                            }
+                        });
+                    } else {
+                        throw new RuntimeException("Item not found");
+                    }
+                } else {
+                    throw new RuntimeException("Item not found");
+                }
+            });
+            return new ResponseEntity("Item Updated", HttpStatus.OK);
+        } catch (Exception e) {
+            LOGGER.error("Save Error: " + e.getMessage());
+            return new ResponseEntity("Error Saving Item", HttpStatus.BAD_REQUEST);
+        }
     }
 
     public void updateUserPassword(User user, String pass) {

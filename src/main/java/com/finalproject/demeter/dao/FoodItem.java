@@ -12,8 +12,8 @@ public class FoodItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+    private String name;
     private String description;
     private boolean reusable;
-    @Lob
-    private Blob pic;
+    private String picUrl;
 }

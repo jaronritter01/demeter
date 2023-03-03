@@ -1,7 +1,9 @@
 package com.finalproject.demeter.controller;
 
+import com.finalproject.demeter.dao.FoodItem;
 import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.User;
+import com.finalproject.demeter.dto.FoodMark;
 import com.finalproject.demeter.dto.UpdateInventory;
 import com.finalproject.demeter.service.UserService;
 import com.finalproject.demeter.util.JwtUtil;
@@ -26,6 +28,12 @@ public class InventoryController {
     @Autowired
     public InventoryController(UserService userService) {
         this.userService = userService;
+    }
+
+    @PostMapping("/markItem")
+    public ResponseEntity<String> markMinorItem(
+            @RequestHeader("AUTHORIZATION") String jwt, @RequestBody FoodMark item) {
+        return userService.markFoodItem(jwt, item.getItemId(), item.getCommand());
     }
 
     @PostMapping("/updateInventory")
