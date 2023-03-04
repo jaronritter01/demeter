@@ -4,6 +4,7 @@ import com.finalproject.demeter.dao.Recipe;
 import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
 import com.finalproject.demeter.service.RecipeService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,5 +39,12 @@ public class RecipeController {
         PaginationSetting pageSetting = recipeService.getPaginationSettings(requestObject);
         RecipeQuery query = recipeService.getRecipeQuery(requestObject);
         return recipeService.getQueriedRecipes(query, pageSetting);
+    }
+
+    @PostMapping("/recipeWithInventory")
+    public ResponseEntity<?> getRecipesWithInventory(@RequestHeader("AUTHORIZATION") String jwt,
+                                                     @RequestBody PaginationSetting paginationSetting) {
+        List<Recipe> recipeList = recipeService.getRecipeWithInventory(jwt, paginationSetting);
+        return new ResponseEntity(recipeList, HttpStatus.OK);
     }
 }

@@ -36,6 +36,10 @@ public class UserService implements UserDetailsService {
         add(new SimpleGrantedAuthority("user"));
     }};
 
+    /**
+     * This service is used to interact with users
+     * */
+
     @Autowired
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        PasswordTokenRepository passwordTokenRepository, FoodItemRepository foodItemRepository,
@@ -48,13 +52,22 @@ public class UserService implements UserDetailsService {
         this.minorItemRepository = minorItemRepository;
     }
 
+    /**
+     * Takes a JWT and retrieves the user associated with it.
+     * @param jwtToken the passed jwt.
+     * @return An optional containing the user if one could be found.
+     * */
     public Optional<User> getUserFromJwtToken(String jwtToken){
         String email = jwtUtil.extractEmail(jwtToken.substring(7));
         User user = userRepository.findByEmail(email).get();
         return Optional.ofNullable(user);
     }
 
-    @Override
+    /**
+     * Takes a username or email and tries to find the associated user.
+     * @param usernameOrEmail The username or email of the desired user.
+     * @return UserDetails object for the found user
+     * */
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
         User user = userRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail)
                 .orElseThrow(() ->
@@ -66,6 +79,11 @@ public class UserService implements UserDetailsService {
                 authorities);
     }
 
+    /**
+     *  Allow the user to create an account.
+     * @param signUpDto The data transfer object used to allow the user to create and account.
+     * @return The response based on the success of the addition.
+     * */
     public ResponseEntity<?> addUser(SignUpDto signUpDto) {
         // add check for username exists in a DB
         if(userRepository.existsByUsername(signUpDto.getUsername())){
