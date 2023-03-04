@@ -52,9 +52,4 @@ public class SecurityConfig {
         http.cors();
         return http.build();
     }
-
-
-
-
-
 }

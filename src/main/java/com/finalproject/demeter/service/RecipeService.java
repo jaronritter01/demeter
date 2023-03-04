@@ -1,7 +1,9 @@
 package com.finalproject.demeter.service;
 
+import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.Recipe;
 import com.finalproject.demeter.dao.RecipeItem;
+import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
 import com.finalproject.demeter.repository.RecipeItemRepository;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
@@ -25,11 +28,16 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * This Service is used for all functions that deal with Recipes
+ * */
+
 @Service
 public class RecipeService {
     private RecipeRepository recipeRepository;
     private RecipeItemRepository recipeItemRepository;
     private RecipeRatingRepository recipeRatingRepository;
+    private UserService userService;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
     private static final PaginationSetting DEFAULT_PAGE = new PaginationSettingBuilder()
@@ -73,10 +81,95 @@ public class RecipeService {
             .build();
 
     public RecipeService(RecipeRepository recipeRepository, RecipeItemRepository recipeItemRepository,
-                         RecipeRatingRepository recipeRatingRepository) {
+                         RecipeRatingRepository recipeRatingRepository, UserService userService) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
         this.recipeRatingRepository = recipeRatingRepository;
+        this.userService = userService;
+    }
+
+    /**
+     * Get a recipe list that takes into account the inventory of a given user.
+     * @param jwtToken: The user's jwt
+     * @param pageSettings: The pagination setting for the given request
+     * @return A list of reicpes that can be made user's given inventory.
+     * */
+    public List<Recipe> getRecipeWithInventory(String jwtToken, PaginationSetting pageSettings) {
+        // This will likely need to be optimized.
+        if (pageSettings.getPageSize() <= 0 || pageSettings.getPageNumber() < 0) {
+            return new ArrayList<>();
+        }
+
+        List<Recipe> recipeList = recipeRepository.findAll();
+        Optional<User> user = userService.getUserFromJwtToken(jwtToken);
+        List<InventoryItem> userInventory = null;
+
+        if (user.isPresent()) {
+            userInventory = userService.getInventory(user.get());
+        }
+
+        if (userInventory != null) {
+            List<Recipe> returnList = new ArrayList<>();
+            for (Recipe recipe : recipeList) {
+                Optional<List<RecipeItem>> recipeItems = recipeItemRepository.findRecipeItemsByRecipe(recipe);
+                if (recipeItems.isPresent()) {
+                    // check to see what recipes can be made
+                    if (canRecipeBeMade(userInventory, recipeItems.get())) {
+                        returnList.add(recipe);
+                    }
+                }
+            }
+            // Return the matched list
+            // TODO: Test Pagination Index Stuff
+            // Need to perform a bound check to make sure to not get array out of bounds
+            int startIndex = pageSettings.getPageNumber() * pageSettings.getPageSize();
+            int endIndex = startIndex + pageSettings.getPageSize();
+
+            if (startIndex >= recipeList.size()) {
+                return new ArrayList<>();
+            }
+
+            if (endIndex > returnList.size()) {
+                endIndex = returnList.size();
+            }
+
+            return returnList.subList(startIndex, endIndex);
+        }
+
+        return new ArrayList<>();
+    }
+
+    /**
+     * This checks a recipe against a user recipe to see if the recipe can be made.
+     * @param userInventory: A given user's inventory.
+     * @param recipeItems: The items required for a given recipe.
+     * @return A boolean representing if a recipe can be made with the current ingredients a user has.
+     * */
+    private boolean canRecipeBeMade(List<InventoryItem> userInventory, List<RecipeItem> recipeItems) {
+        // TODO: Test This
+        if (recipeItems.size() == 0) {
+            return false;
+        }
+        for (RecipeItem recipeItem : recipeItems) {
+            long currentFoodItemId = recipeItem.getFoodItem().getId();
+            Float recipeQuantity = recipeItem.getQuantity();
+            // Loop thru inventory to see if it exists
+            boolean found = false;
+            for (InventoryItem inventoryItem : userInventory) {
+                long currentInventoryItemId = inventoryItem.getFoodId().getId();
+                Float inventoryItemQuantity = inventoryItem.getQuantity();
+                if (currentFoodItemId == currentInventoryItemId && inventoryItemQuantity >= recipeQuantity) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void setRecipeRatings (Recipe recipe){
@@ -156,7 +249,6 @@ public class RecipeService {
     // Write tests for this
     public ResponseEntity<?> getRecipeById(Long id) {
         Optional<Recipe> recipe = recipeRepository.findById(id);
-        // TODO: calculate the average stars
         if (recipe.isPresent()){
             setRecipeRatings(recipe.get());
             return new ResponseEntity(recipe.get(), HttpStatus.OK);

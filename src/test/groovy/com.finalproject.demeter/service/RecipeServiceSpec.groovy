@@ -1,8 +1,18 @@
 package com.finalproject.demeter.service
 
+import com.finalproject.demeter.dao.FoodItem
+import com.finalproject.demeter.dao.InventoryItem
 import com.finalproject.demeter.dao.Recipe
+import com.finalproject.demeter.dao.RecipeItem
+import com.finalproject.demeter.dao.User
 import com.finalproject.demeter.dto.RecipeQuery
+import com.finalproject.demeter.repository.RecipeItemRepository
+import com.finalproject.demeter.repository.RecipeRatingRepository
 import com.finalproject.demeter.repository.RecipeRepository
+import com.finalproject.demeter.util.FoodItemBuilder
+import com.finalproject.demeter.util.InventoryItemBuilder
+import com.finalproject.demeter.util.RecipeBuilder
+import com.finalproject.demeter.util.RecipeItemBuilder
 import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -10,8 +20,127 @@ import spock.lang.Specification
 
 
 class RecipeServiceSpec extends Specification{
-    private RecipeRepository recipeRepository = Mock()
-    private RecipeService recipeService = new RecipeService(recipeRepository)
+    RecipeRepository recipeRepository = Mock()
+    RecipeItemRepository recipeItemRepository = Mock()
+    RecipeRatingRepository recipeRatingRepository = Mock()
+    UserService userService = Mock()
+    RecipeService recipeService = new RecipeService(recipeRepository, recipeItemRepository, recipeRatingRepository,
+            userService)
+    User user = new User()
+    FoodItem foodItemOne = null
+    FoodItem foodItemTwo = null
+    List<Recipe> recipeList = new ArrayList<>()
+    List<InventoryItem> userInventory = null
+
+    def setup(){
+        user.id = 1L
+        user.firstName = "John"
+        user.lastName = "Doe"
+        user.email = "jdoe@gmail.com"
+        user.password = "Testpassword1!"
+        foodItemOne = new FoodItemBuilder().id(1L).name("item1")
+                .description("item 1 description").reusable(false).picUrl("randomUrl").build()
+        foodItemTwo = new FoodItemBuilder().id(2L).name("item2")
+                .description("item 2 description").reusable(false).picUrl("randomUrl").build()
+
+        for (int i = 1; i <= 5; i++) {
+            Recipe recipe = new RecipeBuilder().id(Long.valueOf(i.toString()))
+                    .name(String.format("Test Recipe %d", i))
+                    .description(String.format("Test Recipe %d Description", i))
+                    .cookTime(100).avgRating(5.0F).reviewCount(10L).build()
+            recipeList.add(recipe)
+        }
+
+        userInventory = new ArrayList<>()
+    }
+
+    def "When a user has more than enough ingredients for a recipe, true should be returned" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(10F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems)
+
+        then:
+        canBeMade
+    }
+
+    def "When a user has just enough ingredients for a recipe, true should be returned" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(5F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems)
+
+        then:
+        canBeMade
+    }
+
+    def "When a user does not enough ingredients for a recipe, false should be returned" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(2F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems)
+
+        then:
+        !canBeMade
+    }
+
+    def "When a user does not have the right ingredients for a recipe, false should be returned" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemTwo)
+                .quantity(10F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems)
+
+        then:
+        !canBeMade
+    }
 
     def "getAllRecipes should call the recipe repo" () {
         when:
