@@ -1,11 +1,9 @@
 package com.finalproject.demeter.service;
 
-import com.finalproject.demeter.dao.InventoryItem;
-import com.finalproject.demeter.dao.Recipe;
-import com.finalproject.demeter.dao.RecipeItem;
-import com.finalproject.demeter.dao.User;
+import com.finalproject.demeter.dao.*;
 import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
+import com.finalproject.demeter.dto.UpdateRecipeReview;
 import com.finalproject.demeter.repository.RecipeItemRepository;
 import com.finalproject.demeter.repository.RecipeRatingRepository;
 import com.finalproject.demeter.repository.RecipeRepository;
@@ -318,5 +316,31 @@ public class RecipeService {
                 return new ResponseEntity<>("Invalid Method", HttpStatus.BAD_REQUEST);
             }
         }
+    }
+
+    public ResponseEntity<String> updateRecipeReview(UpdateRecipeReview reviewItem) {
+        RecipeReview recipeReview = recipeRatingRepository.findById(reviewItem.getReviewId());
+
+        recipeReview.setReview(reviewItem.getReview());
+        try {
+            recipeReview.setStars(reviewItem.getStars());
+        } catch(Exception e) {
+            return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            recipeRatingRepository.save(recipeReview);
+        } catch(Exception e) {
+            return new ResponseEntity("Review failed to save", HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity("Review was saved", HttpStatus.OK);
+    }
+
+    public ResponseEntity<?> getRecipeReview(long id) {
+        RecipeReview recipeReview = recipeRatingRepository.findById(id);
+        if (!recipeReview.equals(null)){
+            return new ResponseEntity(recipeReview, HttpStatus.OK);
+        }
+        return new ResponseEntity("Recipe Review does not exist for this id", HttpStatus.NOT_FOUND);
     }
 }

@@ -1,8 +1,13 @@
 package com.finalproject.demeter.controller;
 
+import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.Recipe;
+import com.finalproject.demeter.dao.RecipeReview;
+import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
+import com.finalproject.demeter.dto.UpdateInventory;
+import com.finalproject.demeter.dto.UpdateRecipeReview;
 import com.finalproject.demeter.service.RecipeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/v1/api/recipes")
@@ -46,5 +52,16 @@ public class RecipeController {
                                                      @RequestBody PaginationSetting paginationSetting) {
         List<Recipe> recipeList = recipeService.getRecipeWithInventory(jwt, paginationSetting);
         return new ResponseEntity(recipeList, HttpStatus.OK);
+    }
+
+    @PostMapping("/updateReview")
+    public ResponseEntity<?> updateRecipeReview(@RequestBody UpdateRecipeReview reviewItem) {
+        ResponseEntity response = recipeService.updateRecipeReview(reviewItem);
+        if (response.getBody().equals("Review was saved")) {
+            ResponseEntity<?> recipeReview = recipeService.getRecipeReview(reviewItem.getReviewId());
+            return new ResponseEntity(recipeReview, HttpStatus.OK);
+        }
+
+        return response;
     }
 }
