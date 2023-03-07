@@ -16,5 +16,5 @@ public interface RecipeRatingRepository extends JpaRepository<RecipeReview, Long
     )
     Optional<Float> getAverageReviewByRecipeId(long recipe_id);
 
-    RecipeReview findById(long review_id);
+    Optional<RecipeReview> findById(long review_id);
 }

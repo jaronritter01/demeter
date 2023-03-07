@@ -1,6 +1,7 @@
 package com.finalproject.demeter.service;
 
 import com.finalproject.demeter.dao.*;
+import com.finalproject.demeter.dto.AddRecipeReview;
 import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
 import com.finalproject.demeter.dto.UpdateRecipeReview;
@@ -17,7 +18,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
@@ -324,21 +324,26 @@ public class RecipeService {
      * @return ResponseEntity with fail or success message
      */
     public ResponseEntity<String> updateRecipeReview(UpdateRecipeReview reviewItem) {
-        RecipeReview recipeReview = recipeRatingRepository.findById(reviewItem.getReviewId());
+        Optional<RecipeReview> recipeReview = recipeRatingRepository.findById(reviewItem.getReviewId());
 
-        recipeReview.setReview(reviewItem.getReview());
-        try {
-            recipeReview.setStars(reviewItem.getStars());
-        } catch(Exception e) {
-            return new ResponseEntity(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
+        if(recipeReview.isPresent()) {
+            recipeReview.get().setReview(reviewItem.getReview());
 
-        try {
-            recipeRatingRepository.save(recipeReview);
-        } catch(Exception e) {
-            return new ResponseEntity("Review failed to save", HttpStatus.BAD_REQUEST);
+            try {
+                recipeReview.get().setStars(reviewItem.getStars());
+            } catch(Exception e) {
+                return new ResponseEntity("Stars could not be set", HttpStatus.BAD_REQUEST);
+            }
+
+            try {
+                recipeRatingRepository.save(recipeReview.get());
+            } catch(Exception e) {
+                return new ResponseEntity("Review failed to update", HttpStatus.BAD_REQUEST);
+            }
+        } else {
+            return new ResponseEntity("Review not found", HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity("Review was saved", HttpStatus.OK);
+        return new ResponseEntity("Review was updated", HttpStatus.OK);
     }
 
     /**
@@ -346,13 +351,22 @@ public class RecipeService {
      * @param reviewItem
      * @return ResponseEntity with an error or success message
      */
-    public ResponseEntity<String> addRecipeReview(RecipeReview reviewItem) {
+    public ResponseEntity<String> addRecipeReview(String jwt, AddRecipeReview reviewItem, RecipeReview recipeReview) {
+        recipeReview.setReview(reviewItem.getReview());
+        recipeReview.setRecipe(recipeRepository.findById(reviewItem.getRecipeId()));
+        recipeReview.setUser(userService.getUserFromJwtToken(jwt).get());
+
         try {
-            recipeRatingRepository.save(reviewItem);
+            recipeReview.setStars(reviewItem.getStars());
         } catch(Exception e) {
-            return new ResponseEntity("Review failed to save", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity("Stars could not be set", HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity("Review was saved", HttpStatus.OK);
+        try {
+            recipeRatingRepository.save(recipeReview);
+        } catch(Exception e) {
+            return new ResponseEntity("Review failed to add", HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity("Review was created:", HttpStatus.OK);
     }
 
     /**
@@ -361,8 +375,8 @@ public class RecipeService {
      * @return ResponseEntity with an error message or recipe review
      */
     public ResponseEntity<?> getRecipeReview(long id) {
-        RecipeReview recipeReview = recipeRatingRepository.findById(id);
-        if (!recipeReview.equals(null)){
+        Optional<RecipeReview> recipeReview = recipeRatingRepository.findById(id);
+        if (recipeReview.isPresent()){
             return new ResponseEntity(recipeReview, HttpStatus.OK);
         }
         return new ResponseEntity("Recipe Review does not exist for this id", HttpStatus.NOT_FOUND);

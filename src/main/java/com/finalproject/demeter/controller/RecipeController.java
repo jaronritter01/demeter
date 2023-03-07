@@ -1,13 +1,8 @@
 package com.finalproject.demeter.controller;
 
-import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.Recipe;
 import com.finalproject.demeter.dao.RecipeReview;
-import com.finalproject.demeter.dao.User;
-import com.finalproject.demeter.dto.PaginationSetting;
-import com.finalproject.demeter.dto.RecipeQuery;
-import com.finalproject.demeter.dto.UpdateInventory;
-import com.finalproject.demeter.dto.UpdateRecipeReview;
+import com.finalproject.demeter.dto.*;
 import com.finalproject.demeter.service.RecipeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/v1/api/recipes")
@@ -76,11 +70,12 @@ public class RecipeController {
      * @return ResponseEntity with error message or new recipeReview
      */
     @PostMapping("/addReview")
-    public ResponseEntity<?> addRecipeReview(@RequestBody RecipeReview reviewItem) {
-        ResponseEntity response = recipeService.addRecipeReview(reviewItem);
+    public ResponseEntity<?> addRecipeReview(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody AddRecipeReview reviewItem) {
+        RecipeReview recipeReview = new RecipeReview();
+        ResponseEntity response = recipeService.addRecipeReview(jwt, reviewItem, recipeReview);
         if (response.getBody().equals("Review was created")) {
-            ResponseEntity<?> recipeReview = recipeService.getRecipeReview(reviewItem.getId());
-            return new ResponseEntity(recipeReview, HttpStatus.OK);
+            ResponseEntity<?> newRecipeReview = recipeService.getRecipeReview(recipeReview.getId());
+            return new ResponseEntity(newRecipeReview, HttpStatus.OK);
         }
 
         return response;
