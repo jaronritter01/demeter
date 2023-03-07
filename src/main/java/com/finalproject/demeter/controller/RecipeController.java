@@ -54,11 +54,32 @@ public class RecipeController {
         return new ResponseEntity(recipeList, HttpStatus.OK);
     }
 
+    /**
+     * endpoint for updating a recipeReview with an inputted RecipeReview item
+     * @param reviewItem
+     * @return ResponseEntity with error message or updated recipeReview
+     */
     @PostMapping("/updateReview")
     public ResponseEntity<?> updateRecipeReview(@RequestBody UpdateRecipeReview reviewItem) {
         ResponseEntity response = recipeService.updateRecipeReview(reviewItem);
         if (response.getBody().equals("Review was saved")) {
             ResponseEntity<?> recipeReview = recipeService.getRecipeReview(reviewItem.getReviewId());
+            return new ResponseEntity(recipeReview, HttpStatus.OK);
+        }
+
+        return response;
+    }
+
+    /**
+     * endpoint for adding a new recipeReview with an inputted RecipeReview item
+     * @param reviewItem
+     * @return ResponseEntity with error message or new recipeReview
+     */
+    @PostMapping("/addReview")
+    public ResponseEntity<?> addRecipeReview(@RequestBody RecipeReview reviewItem) {
+        ResponseEntity response = recipeService.addRecipeReview(reviewItem);
+        if (response.getBody().equals("Review was created")) {
+            ResponseEntity<?> recipeReview = recipeService.getRecipeReview(reviewItem.getId());
             return new ResponseEntity(recipeReview, HttpStatus.OK);
         }
 

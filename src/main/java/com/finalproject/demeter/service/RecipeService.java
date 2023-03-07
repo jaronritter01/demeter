@@ -318,6 +318,11 @@ public class RecipeService {
         }
     }
 
+    /**
+     * Updates recipeReview with inputted review Item
+     * @param reviewItem
+     * @return ResponseEntity with fail or success message
+     */
     public ResponseEntity<String> updateRecipeReview(UpdateRecipeReview reviewItem) {
         RecipeReview recipeReview = recipeRatingRepository.findById(reviewItem.getReviewId());
 
@@ -336,6 +341,25 @@ public class RecipeService {
         return new ResponseEntity("Review was saved", HttpStatus.OK);
     }
 
+    /**
+     * creates a new recipe review based on inputted reviewItem
+     * @param reviewItem
+     * @return ResponseEntity with an error or success message
+     */
+    public ResponseEntity<String> addRecipeReview(RecipeReview reviewItem) {
+        try {
+            recipeRatingRepository.save(reviewItem);
+        } catch(Exception e) {
+            return new ResponseEntity("Review failed to save", HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity("Review was saved", HttpStatus.OK);
+    }
+
+    /**
+     * returns a RecipeReview based on an inputted id
+     * @param id
+     * @return ResponseEntity with an error message or recipe review
+     */
     public ResponseEntity<?> getRecipeReview(long id) {
         RecipeReview recipeReview = recipeRatingRepository.findById(id);
         if (!recipeReview.equals(null)){
