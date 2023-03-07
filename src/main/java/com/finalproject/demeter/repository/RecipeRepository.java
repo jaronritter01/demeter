@@ -26,4 +26,6 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
             nativeQuery = true
     )
     Page<Recipe> findRecipeWithTimeMore(int time, Pageable page);
+
+    Recipe findById(long id);
 }

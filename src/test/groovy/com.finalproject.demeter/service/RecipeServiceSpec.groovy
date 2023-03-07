@@ -4,8 +4,10 @@ import com.finalproject.demeter.dao.FoodItem
 import com.finalproject.demeter.dao.InventoryItem
 import com.finalproject.demeter.dao.Recipe
 import com.finalproject.demeter.dao.RecipeItem
+import com.finalproject.demeter.dao.RecipeReview
 import com.finalproject.demeter.dao.User
 import com.finalproject.demeter.dto.RecipeQuery
+import com.finalproject.demeter.dto.UpdateRecipeReview
 import com.finalproject.demeter.repository.RecipeItemRepository
 import com.finalproject.demeter.repository.RecipeRatingRepository
 import com.finalproject.demeter.repository.RecipeRepository
@@ -32,6 +34,9 @@ class RecipeServiceSpec extends Specification{
     List<Recipe> recipeList = new ArrayList<>()
     List<InventoryItem> userInventory = null
 
+    UpdateRecipeReview reviewItem = new UpdateRecipeReview()
+    RecipeReview recipeReview = new RecipeReview()
+
     def setup(){
         user.id = 1L
         user.firstName = "John"
@@ -52,6 +57,12 @@ class RecipeServiceSpec extends Specification{
         }
 
         userInventory = new ArrayList<>()
+
+        reviewItem.setReview("Very good.")
+        reviewItem.setStars(5)
+        reviewItem.setReviewId(1001)
+
+        recipeReview.setId(1001)
     }
 
     def "When a user has more than enough ingredients for a recipe, true should be returned" () {
@@ -227,5 +238,26 @@ class RecipeServiceSpec extends Specification{
 
         then:
         response.getStatusCode() == HttpStatus.OK && response.body instanceof HashMap
+    }
+
+    def "test updateRecipeReview" () {
+        when:
+        ResponseEntity response = recipeService.updateRecipeReview(reviewItem)
+
+        then:
+        1 * recipeRatingRepository.findById(1001) >> recipeReview
+        response.getStatusCode() == HttpStatus.OK && response.body == "Review was saved"
+    }
+
+    def "test failure to set stars updateRecipeReview" () {
+        given:
+        reviewItem.setStars(10)
+
+        when:
+        ResponseEntity response = recipeService.updateRecipeReview(reviewItem)
+
+        then:
+        1 * recipeRatingRepository.findById(1001) >> recipeReview
+        response.getStatusCode() == HttpStatus.BAD_REQUEST && response.body == "A value less than 1 or more than 5 cannot be used as a rating"
     }
 }

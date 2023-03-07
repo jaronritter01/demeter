@@ -1,11 +1,10 @@
 package com.finalproject.demeter.service;
 
-import com.finalproject.demeter.dao.InventoryItem;
-import com.finalproject.demeter.dao.Recipe;
-import com.finalproject.demeter.dao.RecipeItem;
-import com.finalproject.demeter.dao.User;
+import com.finalproject.demeter.dao.*;
+import com.finalproject.demeter.dto.AddRecipeReview;
 import com.finalproject.demeter.dto.PaginationSetting;
 import com.finalproject.demeter.dto.RecipeQuery;
+import com.finalproject.demeter.dto.UpdateRecipeReview;
 import com.finalproject.demeter.repository.RecipeItemRepository;
 import com.finalproject.demeter.repository.RecipeRatingRepository;
 import com.finalproject.demeter.repository.RecipeRepository;
@@ -19,7 +18,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
@@ -318,5 +316,69 @@ public class RecipeService {
                 return new ResponseEntity<>("Invalid Method", HttpStatus.BAD_REQUEST);
             }
         }
+    }
+
+    /**
+     * Updates recipeReview with inputted review Item
+     * @param reviewItem
+     * @return ResponseEntity with fail or success message
+     */
+    public ResponseEntity<String> updateRecipeReview(UpdateRecipeReview reviewItem) {
+        Optional<RecipeReview> recipeReview = recipeRatingRepository.findById(reviewItem.getReviewId());
+
+        if(recipeReview.isPresent()) {
+            recipeReview.get().setReview(reviewItem.getReview());
+
+            try {
+                recipeReview.get().setStars(reviewItem.getStars());
+            } catch(Exception e) {
+                return new ResponseEntity("Stars could not be set", HttpStatus.BAD_REQUEST);
+            }
+
+            try {
+                recipeRatingRepository.save(recipeReview.get());
+            } catch(Exception e) {
+                return new ResponseEntity("Review failed to update", HttpStatus.BAD_REQUEST);
+            }
+        } else {
+            return new ResponseEntity("Review not found", HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity("Review was updated", HttpStatus.OK);
+    }
+
+    /**
+     * creates a new recipe review based on inputted reviewItem
+     * @param reviewItem
+     * @return ResponseEntity with an error or success message
+     */
+    public ResponseEntity<String> addRecipeReview(String jwt, AddRecipeReview reviewItem, RecipeReview recipeReview) {
+        recipeReview.setReview(reviewItem.getReview());
+        recipeReview.setRecipe(recipeRepository.findById(reviewItem.getRecipeId()));
+        recipeReview.setUser(userService.getUserFromJwtToken(jwt).get());
+
+        try {
+            recipeReview.setStars(reviewItem.getStars());
+        } catch(Exception e) {
+            return new ResponseEntity("Stars could not be set", HttpStatus.BAD_REQUEST);
+        }
+        try {
+            recipeRatingRepository.save(recipeReview);
+        } catch(Exception e) {
+            return new ResponseEntity("Review failed to add", HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity("Review was created:", HttpStatus.OK);
+    }
+
+    /**
+     * returns a RecipeReview based on an inputted id
+     * @param id
+     * @return ResponseEntity with an error message or recipe review
+     */
+    public ResponseEntity<?> getRecipeReview(long id) {
+        Optional<RecipeReview> recipeReview = recipeRatingRepository.findById(id);
+        if (recipeReview.isPresent()){
+            return new ResponseEntity(recipeReview, HttpStatus.OK);
+        }
+        return new ResponseEntity("Recipe Review does not exist for this id", HttpStatus.NOT_FOUND);
     }
 }

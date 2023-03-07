@@ -1,8 +1,8 @@
 package com.finalproject.demeter.controller;
 
 import com.finalproject.demeter.dao.Recipe;
-import com.finalproject.demeter.dto.PaginationSetting;
-import com.finalproject.demeter.dto.RecipeQuery;
+import com.finalproject.demeter.dao.RecipeReview;
+import com.finalproject.demeter.dto.*;
 import com.finalproject.demeter.service.RecipeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,5 +46,38 @@ public class RecipeController {
                                                      @RequestBody PaginationSetting paginationSetting) {
         List<Recipe> recipeList = recipeService.getRecipeWithInventory(jwt, paginationSetting);
         return new ResponseEntity(recipeList, HttpStatus.OK);
+    }
+
+    /**
+     * endpoint for updating a recipeReview with an inputted RecipeReview item
+     * @param reviewItem
+     * @return ResponseEntity with error message or updated recipeReview
+     */
+    @PostMapping("/updateReview")
+    public ResponseEntity<?> updateRecipeReview(@RequestBody UpdateRecipeReview reviewItem) {
+        ResponseEntity response = recipeService.updateRecipeReview(reviewItem);
+        if (response.getBody().equals("Review was saved")) {
+            ResponseEntity<?> recipeReview = recipeService.getRecipeReview(reviewItem.getReviewId());
+            return new ResponseEntity(recipeReview, HttpStatus.OK);
+        }
+
+        return response;
+    }
+
+    /**
+     * endpoint for adding a new recipeReview with an inputted RecipeReview item
+     * @param reviewItem
+     * @return ResponseEntity with error message or new recipeReview
+     */
+    @PostMapping("/addReview")
+    public ResponseEntity<?> addRecipeReview(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody AddRecipeReview reviewItem) {
+        RecipeReview recipeReview = new RecipeReview();
+        ResponseEntity response = recipeService.addRecipeReview(jwt, reviewItem, recipeReview);
+        if (response.getBody().equals("Review was created")) {
+            ResponseEntity<?> newRecipeReview = recipeService.getRecipeReview(recipeReview.getId());
+            return new ResponseEntity(newRecipeReview, HttpStatus.OK);
+        }
+
+        return response;
     }
 }
