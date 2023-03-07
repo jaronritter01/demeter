@@ -18,4 +18,5 @@ public class Recipe {
     private Float avgRating;
     @Transient
     private Long reviewCount;
+    private Boolean isPublic;
 }

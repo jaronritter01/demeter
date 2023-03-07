@@ -16,11 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
-import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -55,6 +54,7 @@ public class RecipeService {
             .cookTime(60)
             .avgRating(0F)
             .reviewCount(0L)
+            .isPublic(true)
             .build();
 
     // Usually you should not do this
@@ -136,6 +136,11 @@ public class RecipeService {
 
         return new ArrayList<>();
     }
+
+    // TODO: Finish this lol
+//    public ResponseEntity<?> uploadPersonalRecipe(String jwtToken, RecipeUpload personalRecipe) {
+//
+//    }
 
     /**
      * This checks a recipe against a user recipe to see if the recipe can be made.

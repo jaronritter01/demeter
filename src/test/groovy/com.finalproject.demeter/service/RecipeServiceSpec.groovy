@@ -51,7 +51,7 @@ class RecipeServiceSpec extends Specification{
         for (int i = 1; i <= 5; i++) {
             Recipe recipe = new RecipeBuilder().id(Long.valueOf(i.toString()))
                     .name(String.format("Test Recipe %d", i))
-                    .description(String.format("Test Recipe %d Description", i))
+                    .description(String.format("Test Recipe %d Description", i)).isPublic(true)
                     .cookTime(100).avgRating(5.0F).reviewCount(10L).build()
             recipeList.add(recipe)
         }
