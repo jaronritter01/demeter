@@ -35,6 +35,11 @@ public class RecipeBuilder {
         return this;
     }
 
+    public RecipeBuilder isPublic(Boolean val) {
+        recipe.setIsPublic(val);
+        return this;
+    }
+
     public Recipe build() {
         return recipe;
     }

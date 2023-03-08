@@ -103,6 +103,11 @@ public class UserService implements UserDetailsService {
         return new ResponseEntity<>("User information does not meet the necessary requirements", HttpStatus.BAD_REQUEST);
     }
 
+    /**
+     * Used to turn a sign up object into a user and save that user.
+     * @param signUpDto: The DTO used to sign a user up
+     * @return NONE
+     * */
     private void createAndSaveUser(SignUpDto signUpDto){
         User user = new User();
         user.setFirstName(signUpDto.getFirstName());
@@ -114,15 +119,31 @@ public class UserService implements UserDetailsService {
         userRepository.save(user);
     }
 
+    /**
+     * Find a user by their email.
+     * @param email: String representation of a users email
+     * @return An optional of the user if one was found
+     * */
     public Optional<User> findUserByEmail(String email) {
         return userRepository.findByEmail(email);
     }
 
+    /**
+     * Take a user and a generated token and save that user's token for password reset validation.
+     * @param user: User whose password needs reset
+     * @param token: The generated password reset token
+     * @return NONE
+     * */
     public void createPasswordResetTokenForUser(User user, String token) {
         PasswordResetToken myToken = new PasswordResetToken(user, token);
         passwordTokenRepository.save(myToken);
     }
 
+    /**
+     * Verify that a password reset token is valid.
+     * @param token: the password reset token send by the user
+     * @return a boolean representing if the user's token is valid
+     * */
     public boolean isTokenValid(String token) {
         Optional<PasswordResetToken> pToken = passwordTokenRepository.findByToken(token);
         if (pToken.isPresent()){
@@ -131,6 +152,11 @@ public class UserService implements UserDetailsService {
         return false;
     }
 
+    /**
+     * Retrieve the user that is associated with a password reset token.
+     * @param token: the password reset token send by the user
+     * @return an optional of the user if one was found
+     * */
     public Optional<User> findUserByToken(String token){
         Optional<PasswordResetToken> pToken = passwordTokenRepository.findByToken(token);
         if (pToken.isPresent()) {
@@ -139,11 +165,23 @@ public class UserService implements UserDetailsService {
         return Optional.ofNullable(null);
     }
 
+    /**
+     * Verify that a password reset token is not expired.
+     * @param passToken: the password reset token send by the user
+     * @return a boolean representing if the user's token is expired
+     * */
     private boolean isTokenExpired(PasswordResetToken passToken) {
         final Calendar cal = Calendar.getInstance();
         return passToken.getExpiryDate().before(cal.getTime());
     }
-    
+
+    /**
+     * Mark a food item as minor
+     * @param jwtToken: user jwt
+     * @param itemId: id of the food item to mark as minor
+     * @param mark: string value of if the item should be added as minor or removed
+     * @return a response entity on the status of the operation
+     * */
     public ResponseEntity<String> markFoodItem(String jwtToken, Long itemId, String mark) {
         Optional<User> userOpt = getUserFromJwtToken(jwtToken);
         try {
@@ -174,11 +212,23 @@ public class UserService implements UserDetailsService {
         }
     }
 
+    /**
+     * Updated a users password
+     * @param user: the user whose password needs reset
+     * @param pass: the user's new password
+     * @return NONE
+     * */
     public void updateUserPassword(User user, String pass) {
         user.setPassword(passwordEncoder.encode(pass));
         userRepository.save(user);
     }
 
+    /**
+     * Used to add, remove, decrement, etc. a users inventory.
+     * @param user: the user whose inventory needs updated
+     * @param inventoryItem: the representation of the item that needs to update the inventory
+     * @return a response entity that signifies the status of the operation
+     * */
     public ResponseEntity<String> updateInventory(User user, UpdateInventory inventoryItem) {
         List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
         InventoryItem foundItem = null;
@@ -211,6 +261,7 @@ public class UserService implements UserDetailsService {
             if (inventoryItem.getUnit().equals("")) {
                 return new ResponseEntity("Invalid Unit", HttpStatus.BAD_REQUEST);
             }
+            // This could be replaced with a builder
             foundItem = new InventoryItem();
             foundItem.setUserId(user);
             foundItem.setFoodId(newItem.get());
@@ -222,6 +273,11 @@ public class UserService implements UserDetailsService {
         return new ResponseEntity("Inventory was saved", HttpStatus.OK);
     }
 
+    /**
+     * Get the inventory of a user.
+     * @param user: the user who needs their inventory retrieved.
+     * @return a list of the user's inventory items
+     * */
     public List<InventoryItem> getInventory(User user) {
         return inventoryRepository.findInventoryItemByUserId(user);
     }

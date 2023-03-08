@@ -1,6 +1,7 @@
 package com.finalproject.demeter.dao;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Entity
@@ -18,4 +19,6 @@ public class Recipe {
     private Float avgRating;
     @Transient
     private Long reviewCount;
+    @NotNull
+    private Boolean isPublic;
 }
