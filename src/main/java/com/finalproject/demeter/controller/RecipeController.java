@@ -34,6 +34,23 @@ public class RecipeController {
         return recipeService.getRecipeById(id);
     }
 
+    @PostMapping("/uploadPersonalRecipe")
+    public ResponseEntity<?> uploadPersonalRecipe(@RequestHeader("AUTHORIZATION") String jwt,
+                                                  @RequestBody RecipeUpload newRecipe){
+        return recipeService.uploadPersonalRecipe(jwt, newRecipe);
+    }
+
+    @PostMapping("/removePersonalRecipe")
+    public ResponseEntity<?> removePersonalRecipe(@RequestHeader("AUTHORIZATION") String jwt,
+                                                  @RequestBody Long recipeId){
+        return recipeService.removePersonalRecipe(jwt, recipeId);
+    }
+    @PostMapping("/getPersonalRecipes")
+    public ResponseEntity<?> getPersonalRecipes(@RequestHeader("AUTHORIZATION") String jwt){
+        return recipeService.getPersonalRecipes(jwt);
+    }
+
+
     @PostMapping("/queryRecipes")
     public ResponseEntity<?> queryRecipes(@RequestBody HashMap<String, HashMap<String, String>> requestObject) {
         PaginationSetting pageSetting = recipeService.getPaginationSettings(requestObject);

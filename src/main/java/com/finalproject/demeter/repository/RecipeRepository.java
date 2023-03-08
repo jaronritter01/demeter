@@ -7,8 +7,21 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
+    @Query(
+            value = "SELECT * FROM recipes r WHERE r.is_public=true",
+            nativeQuery = true
+    )
+    Page<Recipe> findAllPublic(Pageable page);
+
+    @Query(
+            value = "SELECT * FROM recipes r WHERE r.is_public=true",
+            nativeQuery = true
+    )
+    List<Recipe> findAllPublic();
     @Query(
             value = "SELECT * FROM recipes r WHERE r.name like %?1% OR r.description like %?1% AND r.is_public=true",
             nativeQuery = true

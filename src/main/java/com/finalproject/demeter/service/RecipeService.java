@@ -1,17 +1,10 @@
 package com.finalproject.demeter.service;
 
 import com.finalproject.demeter.dao.*;
-import com.finalproject.demeter.dto.AddRecipeReview;
-import com.finalproject.demeter.dto.PaginationSetting;
-import com.finalproject.demeter.dto.RecipeQuery;
-import com.finalproject.demeter.dto.UpdateRecipeReview;
-import com.finalproject.demeter.repository.RecipeItemRepository;
-import com.finalproject.demeter.repository.RecipeRatingRepository;
-import com.finalproject.demeter.repository.RecipeRepository;
-import com.finalproject.demeter.util.MapBuilder;
-import com.finalproject.demeter.util.PaginationSettingBuilder;
-import com.finalproject.demeter.util.RecipeBuilder;
-import com.finalproject.demeter.util.RecipeQueryBuilder;
+import com.finalproject.demeter.dto.*;
+import com.finalproject.demeter.repository.*;
+import com.finalproject.demeter.util.*;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -34,6 +27,8 @@ public class RecipeService {
     private RecipeRepository recipeRepository;
     private RecipeItemRepository recipeItemRepository;
     private RecipeRatingRepository recipeRatingRepository;
+    private FoodItemRepository foodItemRepository;
+    private PersonalRecipeRepository personalRecipeRepository;
     private UserService userService;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
@@ -70,7 +65,7 @@ public class RecipeService {
         DEFAULT
     }
 
-    private Map<String, QueryMethod> queryMap = new MapBuilder<String, QueryMethod>()
+    private final Map<String, QueryMethod> queryMap = new MapBuilder<String, QueryMethod>()
             .put("lesstime", QueryMethod.LESS)
             .put("moretime", QueryMethod.MORE)
             .put("desc", QueryMethod.DESC)
@@ -79,11 +74,14 @@ public class RecipeService {
             .build();
 
     public RecipeService(RecipeRepository recipeRepository, RecipeItemRepository recipeItemRepository,
-                         RecipeRatingRepository recipeRatingRepository, UserService userService) {
+                         RecipeRatingRepository recipeRatingRepository, UserService userService,
+                         FoodItemRepository foodItemRepository, PersonalRecipeRepository personalRecipeRepository) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
         this.recipeRatingRepository = recipeRatingRepository;
         this.userService = userService;
+        this.foodItemRepository = foodItemRepository;
+        this.personalRecipeRepository = personalRecipeRepository;
     }
 
     /**
@@ -118,7 +116,6 @@ public class RecipeService {
                 }
             }
             // Return the matched list
-            // TODO: Test Pagination Index Stuff
             // Need to perform a bound check to make sure to not get array out of bounds
             int startIndex = pageSettings.getPageNumber() * pageSettings.getPageSize();
             int endIndex = startIndex + pageSettings.getPageSize();
@@ -137,10 +134,121 @@ public class RecipeService {
         return new ArrayList<>();
     }
 
-    // TODO: Finish this lol
-//    public ResponseEntity<?> uploadPersonalRecipe(String jwtToken, RecipeUpload personalRecipe) {
-//
-//    }
+    public ResponseEntity<?> getPersonalRecipes(String jwt){
+        Optional<User> user = userService.getUserFromJwtToken(jwt);
+        List<Recipe> recipeList = new ArrayList<>();
+        user.ifPresent(value -> personalRecipeRepository.findByUser(value).ifPresent(personalRecipeList -> {
+            personalRecipeList.forEach(recipe -> {
+                Recipe unfinishedRecipe = recipe.getRecipe();
+                setRecipeRatings(unfinishedRecipe);
+                recipeList.add(unfinishedRecipe);
+            });
+        }));
+
+        if (recipeList.size() == 0) {
+            return new ResponseEntity<>("No Recipes Found", HttpStatus.OK);
+        }
+        return new ResponseEntity<>(recipeList, HttpStatus.OK);
+    }
+
+    /**
+     * This is used to enable users to create personal recipes.
+     * @param jwtToken: jwt for the user
+     * @param personalRecipe: DTO that allows users to create a recipe
+     * @return Response Entity that shows the status of the operation
+     * */
+    @Transactional
+    public ResponseEntity<?> uploadPersonalRecipe(String jwtToken, RecipeUpload personalRecipe) {
+        Optional<User> userOpt = userService.getUserFromJwtToken(jwtToken);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            List<PersonalRecipeItem> ingredientList = personalRecipe.getIngredients();
+            // Create the new recipe
+            Recipe newRecipe = new RecipeBuilder()
+                    .name(personalRecipe.getRecipeName())
+                    .description(personalRecipe.getRecipeDescription())
+                    .cookTime(personalRecipe.getCookTime())
+                    .isPublic(false).build();
+
+            // Set up for the save of the items
+            List<FoodItem> recipeItemList = new ArrayList<>();
+            Boolean missingIngredient = false;
+            for (PersonalRecipeItem recipeItem : ingredientList) {
+                // This could be optimized with the introduction of a cache
+                Optional<FoodItem> itemOpt = foodItemRepository.findById(recipeItem.getFoodItemId());
+                if (itemOpt.isPresent()){
+                    recipeItemList.add(itemOpt.get());
+                } else {
+                    missingIngredient = true;
+                }
+            }
+
+            // If you can't find an ingredient
+            if (missingIngredient) {
+                return new ResponseEntity<>("An ingredient is missing", HttpStatus.NOT_FOUND);
+            }
+
+            // Save the recipe
+            Recipe savedRecipe = recipeRepository.save(newRecipe);
+
+            // If all the ingredients are present
+            for (int i = 0; i < recipeItemList.size(); i++){
+                // Create a recipe Item from the user input, created recipe, and found foodItem
+                RecipeItem newRecipeItem = new RecipeItemBuilder()
+                        .foodItem(foodItemRepository.findById(recipeItemList.get(i).getId()).get())
+                        .recipe(savedRecipe).measurementUnit(ingredientList.get(i).getUnit())
+                        .quantity(ingredientList.get(i).getQuantity())
+                        .build();
+                // Save the item
+                recipeItemRepository.save(newRecipeItem);
+            }
+
+            // Save the (user, recipe) combo in the personal recipe table
+            PersonalRecipe personalRecipeSave = new PersonalRecipeBuilder().user(user).recipe(savedRecipe).build();
+            personalRecipeRepository.save(personalRecipeSave);
+
+            return new ResponseEntity<>("Recipe Successfully saved", HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>("User was not Found", HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Used to remove personal recipes from the users profile
+     * @param jwtToken: users jwt
+     * @param RecipeId: id of the personal recipe to be removed
+     * @return ResponseEntity indicating the status of the operation
+     * */
+    @Transactional
+    public ResponseEntity<?> removePersonalRecipe(String jwtToken, Long RecipeId){
+        //Find the user
+        Optional<User> userOpt = userService.getUserFromJwtToken(jwtToken);
+        if (userOpt.isEmpty()){
+            return new ResponseEntity<>("User cannot be found", HttpStatus.NOT_FOUND);
+        }
+        //Find recipe
+        Optional<Recipe> recipeOpt = recipeRepository.findById(RecipeId);
+        if (recipeOpt.isEmpty()) {
+            return new ResponseEntity<>("Recipe cannot be found", HttpStatus.NOT_FOUND);
+        }
+        //Find the personal recipe where user = found user and recipe = found recipe
+        Optional<PersonalRecipe> personalRecipeOpt = personalRecipeRepository.findByUserAndRecipe(
+                    userOpt.get().getId(), recipeOpt.get().getId());
+        if(personalRecipeOpt.isEmpty()) {
+            return new ResponseEntity<>("Personal Recipe cannot be found", HttpStatus.NOT_FOUND);
+        }
+
+        PersonalRecipe personalRecipe = personalRecipeOpt.get();
+
+        //Remove personal Recipe entry
+        personalRecipeRepository.delete(personalRecipe);
+        //Remove the recipe items whose recipe id is that of the to be deleted recipe
+        recipeItemRepository.deleteRecipeItemsByRecipe(recipeOpt.get());
+        //6. Remove the recipe
+        recipeRepository.delete(recipeOpt.get());
+
+        return new ResponseEntity<>("Personal Recipe Successfully Removed", HttpStatus.OK);
+    }
 
     /**
      * This checks a recipe against a user recipe to see if the recipe can be made.
@@ -149,14 +257,13 @@ public class RecipeService {
      * @return A boolean representing if a recipe can be made with the current ingredients a user has.
      * */
     private boolean canRecipeBeMade(List<InventoryItem> userInventory, List<RecipeItem> recipeItems) {
-        // TODO: Test This
         if (recipeItems.size() == 0) {
             return false;
         }
         for (RecipeItem recipeItem : recipeItems) {
             long currentFoodItemId = recipeItem.getFoodItem().getId();
             Float recipeQuantity = recipeItem.getQuantity();
-            // Loop thru inventory to see if it exists
+            // Loop through inventory to see if it exists
             boolean found = false;
             for (InventoryItem inventoryItem : userInventory) {
                 long currentInventoryItemId = inventoryItem.getFoodId().getId();
@@ -178,12 +285,12 @@ public class RecipeService {
     private void setRecipeRatings (Recipe recipe){
         Optional<Long> count = recipeRatingRepository.countByRecipeId(recipe.getId());
         count.ifPresentOrElse(
-                recCount -> recipe.setReviewCount(recCount),
+                recipe::setReviewCount,
                 () -> recipe.setReviewCount(0L)
         );
         Optional<Float> rating = recipeRatingRepository.getAverageReviewByRecipeId(recipe.getId());
         rating.ifPresentOrElse(
-                avgRating -> recipe.setAvgRating(avgRating),
+                recipe::setAvgRating,
                 () -> recipe.setAvgRating(0F)
         );
     }
@@ -191,7 +298,7 @@ public class RecipeService {
     public List<Recipe> getAllRecipes(PaginationSetting pageSettings) {
         Pageable page = PageRequest.of(pageSettings.getPageNumber(), pageSettings.getPageSize());
         List<Recipe> returnList = new ArrayList<>();
-        recipeRepository.findAll(page).forEach(recipe -> {
+        recipeRepository.findAllPublic(page).forEach(recipe -> {
             setRecipeRatings(recipe);
             returnList.add(recipe);
         });
@@ -204,23 +311,22 @@ public class RecipeService {
         if (recipe.isPresent()){
             Optional<List<RecipeItem>> recipeItemList = recipeItemRepository.findRecipeItemsByRecipe(recipe.get());
             if (recipeItemList.isPresent()){
-                return new ResponseEntity(recipeItemList, HttpStatus.OK);
+                return new ResponseEntity<>(recipeItemList, HttpStatus.OK);
             }
 
-            return new ResponseEntity("No Recipe Items Found", HttpStatus.NO_CONTENT);
+            return new ResponseEntity<>("No Recipe Items Found", HttpStatus.NO_CONTENT);
         }
-        return new ResponseEntity("Recipe Not Found", HttpStatus.NO_CONTENT);
+        return new ResponseEntity<>("Recipe Not Found", HttpStatus.NO_CONTENT);
     }
 
     public PaginationSetting getPaginationSettings(HashMap<String, HashMap<String, String>> objs) {
         try {
             Integer pageNumber = Integer.parseInt(objs.get("page").get("pageNumber"));
             Integer pageSize = Integer.parseInt(objs.get("page").get("pageSize"));
-            PaginationSetting pageSettings = new PaginationSettingBuilder()
+            return new PaginationSettingBuilder()
                     .pageNumber(pageNumber)
                     .pageSize(pageSize)
                     .build();
-            return pageSettings;
         }
         catch (Exception e){
             LOGGER.error("Issue parsing page settings: ", e.getMessage(), e);
@@ -231,12 +337,10 @@ public class RecipeService {
 
     public RecipeQuery getRecipeQuery(HashMap<String, HashMap<String, String>> objs) {
         try {
-            RecipeQuery query = new RecipeQueryBuilder()
+            return new RecipeQueryBuilder()
                     .method(objs.get("query").get("method"))
                     .value(objs.get("query").get("value"))
                     .build();
-
-            return query;
         } catch (Exception e) {
             LOGGER.error("Issue parsing query: ", e.getMessage(), e);
         }
@@ -245,7 +349,7 @@ public class RecipeService {
 
     private <T> List<T> pageToList(Page<T> page){
         List<T> returnList = new ArrayList<>();
-        page.forEach(item -> returnList.add(item));
+        page.forEach(returnList::add);
         return returnList;
     }
 
@@ -254,9 +358,9 @@ public class RecipeService {
         Optional<Recipe> recipe = recipeRepository.findById(id);
         if (recipe.isPresent()){
             setRecipeRatings(recipe.get());
-            return new ResponseEntity(recipe.get(), HttpStatus.OK);
+            return new ResponseEntity<>(recipe.get(), HttpStatus.OK);
         }
-        return new ResponseEntity("Recipe does not exist", HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>("Recipe does not exist", HttpStatus.NOT_FOUND);
     }
 
     private HashMap<String, Object> createReturnMap(Page<Recipe> results) {
@@ -272,19 +376,19 @@ public class RecipeService {
         Pageable page = PageRequest.of(pageSettings.getPageNumber(), pageSettings.getPageSize());
 
         if (method == null) {
-            return new ResponseEntity("Invalid Method", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Invalid Method", HttpStatus.BAD_REQUEST);
         }
         switch (method) {
             case NAME:
             case DESC: {
                 Matcher specMatch = SPECIALCHARREGEX.matcher(query.getValue());
                 if (specMatch.find()) {
-                    return new ResponseEntity("Invalid Query", HttpStatus.BAD_REQUEST);
+                    return new ResponseEntity<>("Invalid Query", HttpStatus.BAD_REQUEST);
                 }
                 Page<Recipe> results = recipeRepository.findRecipeLike(query.getValue(), page);
                 results.forEach(recipe -> setRecipeRatings(recipe));
                 HashMap<String, Object> returnMap = createReturnMap(results);
-                return new ResponseEntity(returnMap, HttpStatus.OK);
+                return new ResponseEntity<>(returnMap, HttpStatus.OK);
             }
             case LESS: {
                 try {
@@ -293,9 +397,9 @@ public class RecipeService {
                     );
                     results.forEach(recipe -> setRecipeRatings(recipe));
                     HashMap<String, Object> returnMap = createReturnMap(results);
-                    return new ResponseEntity(returnMap, HttpStatus.OK);
+                    return new ResponseEntity<>(returnMap, HttpStatus.OK);
                 } catch (Exception e) {
-                    return new ResponseEntity("Please pass a valid number", HttpStatus.BAD_REQUEST);
+                    return new ResponseEntity<>("Please pass a valid number", HttpStatus.BAD_REQUEST);
                 }
             }
             case MORE: {
@@ -305,16 +409,16 @@ public class RecipeService {
                     );
                     results.forEach(recipe -> setRecipeRatings(recipe));
                     HashMap<String, Object> returnMap = createReturnMap(results);
-                    return new ResponseEntity(returnMap, HttpStatus.OK);
+                    return new ResponseEntity<>(returnMap, HttpStatus.OK);
                 } catch (Exception e) {
-                    return new ResponseEntity("Please pass a valid number", HttpStatus.BAD_REQUEST);
+                    return new ResponseEntity<>("Please pass a valid number", HttpStatus.BAD_REQUEST);
                 }
             }
             case DEFAULT: {
                 HashMap<String, Object> returnMap = new HashMap<>();
                 returnMap.put("count", 1);
                 returnMap.put("results", DEFAULT_RECIPE_LIST);
-                return new ResponseEntity(returnMap, HttpStatus.OK);
+                return new ResponseEntity<>(returnMap, HttpStatus.OK);
             }
             default: {
                 // This is unreachable in theory
@@ -325,7 +429,7 @@ public class RecipeService {
 
     /**
      * Updates recipeReview with inputted review Item
-     * @param reviewItem
+     * @param reviewItem: DTO for updating the recipe review.
      * @return ResponseEntity with fail or success message
      */
     public ResponseEntity<String> updateRecipeReview(UpdateRecipeReview reviewItem) {
@@ -337,23 +441,23 @@ public class RecipeService {
             try {
                 recipeReview.get().setStars(reviewItem.getStars());
             } catch(Exception e) {
-                return new ResponseEntity("Stars could not be set", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("Stars could not be set", HttpStatus.BAD_REQUEST);
             }
 
             try {
                 recipeRatingRepository.save(recipeReview.get());
             } catch(Exception e) {
-                return new ResponseEntity("Review failed to update", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("Review failed to update", HttpStatus.BAD_REQUEST);
             }
         } else {
-            return new ResponseEntity("Review not found", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Review not found", HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity("Review was updated", HttpStatus.OK);
+        return new ResponseEntity<>("Review was updated", HttpStatus.OK);
     }
 
     /**
      * creates a new recipe review based on inputted reviewItem
-     * @param reviewItem
+     * @param reviewItem: DTO for adding a recipe review.
      * @return ResponseEntity with an error or success message
      */
     public ResponseEntity<String> addRecipeReview(String jwt, AddRecipeReview reviewItem, RecipeReview recipeReview) {
@@ -364,26 +468,26 @@ public class RecipeService {
         try {
             recipeReview.setStars(reviewItem.getStars());
         } catch(Exception e) {
-            return new ResponseEntity("Stars could not be set", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Stars could not be set", HttpStatus.BAD_REQUEST);
         }
         try {
             recipeRatingRepository.save(recipeReview);
         } catch(Exception e) {
-            return new ResponseEntity("Review failed to add", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Review failed to add", HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity("Review was created:", HttpStatus.OK);
+        return new ResponseEntity<>("Review was created:", HttpStatus.OK);
     }
 
     /**
-     * returns a RecipeReview based on an inputted id
-     * @param id
-     * @return ResponseEntity with an error message or recipe review
+     * returns a RecipeReview based on an inputted id.
+     * @param id: id of recipe review.
+     * @return ResponseEntity with an error message or recipe review.
      */
     public ResponseEntity<?> getRecipeReview(long id) {
         Optional<RecipeReview> recipeReview = recipeRatingRepository.findById(id);
         if (recipeReview.isPresent()){
-            return new ResponseEntity(recipeReview, HttpStatus.OK);
+            return new ResponseEntity<>(recipeReview, HttpStatus.OK);
         }
-        return new ResponseEntity("Recipe Review does not exist for this id", HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>("Recipe Review does not exist for this id", HttpStatus.NOT_FOUND);
     }
 }
