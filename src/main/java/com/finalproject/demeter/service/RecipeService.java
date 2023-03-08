@@ -134,6 +134,11 @@ public class RecipeService {
         return new ArrayList<>();
     }
 
+    /**
+     * This is used to get all the personal recipes associated with a user.
+     * @param jwt: The JWT for a user.
+     * @return A response Entity that shows the status of the operation.
+     * */
     public ResponseEntity<?> getPersonalRecipes(String jwt){
         Optional<User> user = userService.getUserFromJwtToken(jwt);
         List<Recipe> recipeList = new ArrayList<>();
@@ -163,6 +168,9 @@ public class RecipeService {
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             List<PersonalRecipeItem> ingredientList = personalRecipe.getIngredients();
+            if (ingredientList.size() == 0){
+                return new ResponseEntity<>("No Ingredients were passed", HttpStatus.BAD_REQUEST);
+            }
             // Create the new recipe
             Recipe newRecipe = new RecipeBuilder()
                     .name(personalRecipe.getRecipeName())
@@ -172,7 +180,7 @@ public class RecipeService {
 
             // Set up for the save of the items
             List<FoodItem> recipeItemList = new ArrayList<>();
-            Boolean missingIngredient = false;
+            boolean missingIngredient = false;
             for (PersonalRecipeItem recipeItem : ingredientList) {
                 // This could be optimized with the introduction of a cache
                 Optional<FoodItem> itemOpt = foodItemRepository.findById(recipeItem.getFoodItemId());
@@ -180,6 +188,7 @@ public class RecipeService {
                     recipeItemList.add(itemOpt.get());
                 } else {
                     missingIngredient = true;
+                    break;
                 }
             }
 
@@ -244,7 +253,7 @@ public class RecipeService {
         personalRecipeRepository.delete(personalRecipe);
         //Remove the recipe items whose recipe id is that of the to be deleted recipe
         recipeItemRepository.deleteRecipeItemsByRecipe(recipeOpt.get());
-        //6. Remove the recipe
+        //Remove the recipe
         recipeRepository.delete(recipeOpt.get());
 
         return new ResponseEntity<>("Personal Recipe Successfully Removed", HttpStatus.OK);
