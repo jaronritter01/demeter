@@ -96,7 +96,7 @@ public class RecipeService {
             return new ArrayList<>();
         }
 
-        List<Recipe> recipeList = recipeRepository.findAll();
+        List<Recipe> recipeList = recipeRepository.findAllPublic();
         Optional<User> user = userService.getUserFromJwtToken(jwtToken);
         List<InventoryItem> userInventory = null;
 
