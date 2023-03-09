@@ -202,6 +202,9 @@ public class RecipeService {
 
             // If all the ingredients are present
             for (int i = 0; i < recipeItemList.size(); i++){
+                if (ingredientList.get(i).getQuantity() < 1) {
+                    return new ResponseEntity<>("Invalid Recipe Quantity", HttpStatus.BAD_REQUEST);
+                }
                 // Create a recipe Item from the user input, created recipe, and found foodItem
                 RecipeItem newRecipeItem = new RecipeItemBuilder()
                         .foodItem(foodItemRepository.findById(recipeItemList.get(i).getId()).get())
