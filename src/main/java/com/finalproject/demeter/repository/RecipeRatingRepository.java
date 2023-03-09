@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -17,4 +18,6 @@ public interface RecipeRatingRepository extends JpaRepository<RecipeReview, Long
     Optional<Float> getAverageReviewByRecipeId(long recipe_id);
 
     Optional<RecipeReview> findById(long review_id);
+
+    Optional<List<RecipeReview>> findByRecipeId(long review_id);
 }

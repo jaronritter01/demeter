@@ -484,11 +484,11 @@ public class RecipeService {
         } catch(Exception e) {
             return new ResponseEntity<>("Review failed to add", HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<>("Review was created:", HttpStatus.OK);
+        return new ResponseEntity<>("Review was created", HttpStatus.OK);
     }
 
     /**
-     * returns a RecipeReview based on an inputted id.
+     * returns a RecipeReview based on an inputted recipe review id.
      * @param id: id of recipe review.
      * @return ResponseEntity with an error message or recipe review.
      */
@@ -496,6 +496,19 @@ public class RecipeService {
         Optional<RecipeReview> recipeReview = recipeRatingRepository.findById(id);
         if (recipeReview.isPresent()){
             return new ResponseEntity<>(recipeReview, HttpStatus.OK);
+        }
+        return new ResponseEntity<>("Recipe Review does not exist for this id", HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * returns a RecipeReview list based on an inputted recipe id.
+     * @param id: id of recipe.
+     * @return ResponseEntity with an error message or list of recipe review.
+     */
+    public ResponseEntity<?> getRecipeReviewByRecipeId(long id) {
+        Optional<List<RecipeReview>> recipeReviews = recipeRatingRepository.findByRecipeId(id);
+        if (recipeReviews.isPresent()){
+            return new ResponseEntity<>(recipeReviews, HttpStatus.OK);
         }
         return new ResponseEntity<>("Recipe Review does not exist for this id", HttpStatus.NOT_FOUND);
     }

@@ -73,7 +73,7 @@ public class RecipeController {
     @PostMapping("/updateReview")
     public ResponseEntity<?> updateRecipeReview(@RequestBody UpdateRecipeReview reviewItem) {
         ResponseEntity response = recipeService.updateRecipeReview(reviewItem);
-        if (response.getBody().equals("Review was saved")) {
+        if (response.getBody().equals("Review was updated")) {
             ResponseEntity<?> recipeReview = recipeService.getRecipeReview(reviewItem.getReviewId());
             return new ResponseEntity(recipeReview, HttpStatus.OK);
         }
@@ -96,5 +96,15 @@ public class RecipeController {
         }
 
         return response;
+    }
+
+    /**
+     * This is used to get all the reviews for a recipe
+     * @param id - recipe id
+     * @return list of recipe reviews
+     */
+    @GetMapping("/getRecipeReviews")
+    public ResponseEntity<?> getRecipeReviewByRecipeId(@RequestParam Long id) {
+        return recipeService.getRecipeReviewByRecipeId(id);
     }
 }

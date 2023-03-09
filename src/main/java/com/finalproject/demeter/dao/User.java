@@ -1,5 +1,6 @@
 package com.finalproject.demeter.dao;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -21,5 +22,6 @@ public class User {
     private String lastName;
     private String username;
     private String email;
+    @JsonIgnore
     private String password;
 }
