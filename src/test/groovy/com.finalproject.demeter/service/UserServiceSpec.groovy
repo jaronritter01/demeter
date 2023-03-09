@@ -3,6 +3,9 @@ package com.finalproject.demeter.service
 import com.finalproject.demeter.dao.PasswordResetToken
 import com.finalproject.demeter.dao.User
 import com.finalproject.demeter.dto.SignUpDto
+import com.finalproject.demeter.repository.FoodItemRepository
+import com.finalproject.demeter.repository.InventoryRepository
+import com.finalproject.demeter.repository.MinorItemRepository
 import com.finalproject.demeter.repository.PasswordTokenRepository
 import com.finalproject.demeter.repository.UserRepository
 import org.springframework.http.HttpStatus
@@ -20,6 +23,9 @@ class UserServiceSpec extends Specification {
     private PasswordEncoder passwordEncoder
     private UserService userService
     private PasswordTokenRepository passwordTokenRepository
+    private FoodItemRepository foodItemRepository = Mock()
+    private InventoryRepository inventoryRepository = Mock()
+    private MinorItemRepository minorItemRepository = Mock()
     private User user = new User()
 
 
@@ -27,7 +33,8 @@ class UserServiceSpec extends Specification {
         userRepository = Stub(UserRepository.class)
         passwordTokenRepository = Mock(PasswordTokenRepository.class)
         passwordEncoder = Mock(PasswordEncoder.class)
-        userService = new UserService(userRepository, passwordEncoder, passwordTokenRepository)
+        userService = new UserService(userRepository, passwordEncoder, passwordTokenRepository, foodItemRepository,
+                inventoryRepository, minorItemRepository)
         user.username = "jSmith"
         user.password = "testingPassword1!"
         user.firstName = "John"

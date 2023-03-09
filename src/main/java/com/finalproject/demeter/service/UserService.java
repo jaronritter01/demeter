@@ -233,43 +233,46 @@ public class UserService implements UserDetailsService {
         List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
         InventoryItem foundItem = null;
         // This could likely be optimized
-        for (InventoryItem item : inventory)
+        for (InventoryItem item : inventory) {
             if (item.getFoodId().getId() == inventoryItem.getFoodId()) {
                 foundItem = item;
-        }
-
-        if (foundItem != null){
-            Float currentQuantity = foundItem.getQuantity();
-            if (inventoryItem.getQuantity() > currentQuantity) {
-                return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
             }
-            if (currentQuantity + inventoryItem.getQuantity() == 0) {
-                inventoryRepository.delete(foundItem);
-                return new ResponseEntity("Inventory Item was Removed", HttpStatus.OK);
+
+            if (foundItem != null) {
+                Float currentQuantity = foundItem.getQuantity();
+                if (currentQuantity + inventoryItem.getQuantity() == 0) {
+                    inventoryRepository.delete(foundItem);
+                    return new ResponseEntity("Inventory Item was Removed", HttpStatus.OK);
+                } else {
+                    if (currentQuantity + inventoryItem.getQuantity() < 0) {
+                        return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
+                    }
+                    // update the inventory
+                    foundItem.setQuantity(currentQuantity + inventoryItem.getQuantity());
+                }
             } else {
-                foundItem.setQuantity(currentQuantity + inventoryItem.getQuantity());
+                // The user does not have the item in their current inventory
+                if (inventoryItem.getQuantity() <= 0) { // and the added value is invalid
+                    return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
+                }
+                Optional<FoodItem> newItem = foodItemRepository.findById(inventoryItem.getFoodId());
+                if (!newItem.isPresent()) {
+                    return new ResponseEntity("The given item does not exist", HttpStatus.NO_CONTENT);
+                }
+                if (inventoryItem.getUnit().equals("")) {
+                    return new ResponseEntity("Invalid Unit", HttpStatus.BAD_REQUEST);
+                }
+                // This could be replaced with a builder
+                foundItem = new InventoryItem();
+                foundItem.setUserId(user);
+                foundItem.setFoodId(newItem.get());
+                foundItem.setQuantity(inventoryItem.getQuantity());
             }
-        } else {
-            // The user does not have the item in their current inventory
-            if (inventoryItem.getQuantity() <= 0) { // and the added value is invalid
-                return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
-            }
-            Optional<FoodItem> newItem = foodItemRepository.findById(inventoryItem.getFoodId());
-            if (!newItem.isPresent()) {
-                return new ResponseEntity("The given item does not exist", HttpStatus.NO_CONTENT);
-            }
-            if (inventoryItem.getUnit().equals("")) {
-                return new ResponseEntity("Invalid Unit", HttpStatus.BAD_REQUEST);
-            }
-            // This could be replaced with a builder
-            foundItem = new InventoryItem();
-            foundItem.setUserId(user);
-            foundItem.setFoodId(newItem.get());
-            foundItem.setQuantity(inventoryItem.getQuantity());
+
             foundItem.setUnit(inventoryItem.getUnit());
+            inventoryRepository.save(foundItem);
         }
 
-        inventoryRepository.save(foundItem);
         return new ResponseEntity("Inventory was saved", HttpStatus.OK);
     }
 
