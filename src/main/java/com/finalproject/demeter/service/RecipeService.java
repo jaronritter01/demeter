@@ -508,6 +508,9 @@ public class RecipeService {
     public ResponseEntity<?> getRecipeReviewByRecipeId(long id) {
         Optional<List<RecipeReview>> recipeReviews = recipeRatingRepository.findByRecipeId(id);
         if (recipeReviews.isPresent()){
+            for (RecipeReview review : recipeReviews.get()) {
+                setRecipeRatings(review.getRecipe());
+            }
             return new ResponseEntity<>(recipeReviews, HttpStatus.OK);
         }
         return new ResponseEntity<>("Recipe Review does not exist for this id", HttpStatus.NOT_FOUND);
