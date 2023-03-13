@@ -75,16 +75,5 @@ class UserRepositorySpec extends Specification {
         then:
         exists
     }
-    def "A user should be returned when a valid username is given"() {
-        given:
-        String username = "jSmith"
-
-        when:
-        Boolean exists = userRepository.existsByUsername(username)
-
-        then:
-        exists
-    }
-
 
 }

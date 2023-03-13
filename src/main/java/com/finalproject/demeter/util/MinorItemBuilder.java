@@ -7,6 +7,10 @@ import com.finalproject.demeter.dao.User;
 public class MinorItemBuilder {
     private MinorItem item = new MinorItem();
 
+    public MinorItemBuilder id (long id) {
+        item.setId(id);
+        return this;
+    }
     public MinorItemBuilder user (User user) {
         item.setUser(user);
         return this;
