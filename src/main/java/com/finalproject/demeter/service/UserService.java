@@ -23,7 +23,7 @@ import java.util.*;
 
 @Service
 public class UserService implements UserDetailsService {
-    private JwtUtil jwtUtil = new JwtUtil();
+    private JwtUtil jwtUtil;
     private PasswordEncoder passwordEncoder;
     private UserRepository userRepository;
     private PasswordTokenRepository passwordTokenRepository;
@@ -43,13 +43,15 @@ public class UserService implements UserDetailsService {
     @Autowired
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        PasswordTokenRepository passwordTokenRepository, FoodItemRepository foodItemRepository,
-                       InventoryRepository inventoryRepository, MinorItemRepository minorItemRepository){
+                       InventoryRepository inventoryRepository, MinorItemRepository minorItemRepository,
+                       JwtUtil jwtUtil){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordTokenRepository = passwordTokenRepository;
         this.foodItemRepository = foodItemRepository;
         this.inventoryRepository = inventoryRepository;
         this.minorItemRepository = minorItemRepository;
+        this.jwtUtil = jwtUtil;
     }
 
     /**
@@ -59,8 +61,7 @@ public class UserService implements UserDetailsService {
      * */
     public Optional<User> getUserFromJwtToken(String jwtToken){
         String email = jwtUtil.extractEmail(jwtToken.substring(7));
-        User user = userRepository.findByEmail(email).get();
-        return Optional.ofNullable(user);
+        return userRepository.findByEmail(email);
     }
 
     /**
@@ -162,7 +163,7 @@ public class UserService implements UserDetailsService {
         if (pToken.isPresent()) {
             return Optional.of(pToken.get().getUser());
         }
-        return Optional.ofNullable(null);
+        return Optional.empty();
     }
 
     /**
@@ -185,7 +186,7 @@ public class UserService implements UserDetailsService {
     public ResponseEntity<String> markFoodItem(String jwtToken, Long itemId, String mark) {
         Optional<User> userOpt = getUserFromJwtToken(jwtToken);
         try {
-            userOpt.ifPresent(user -> {
+            userOpt.ifPresentOrElse(user -> {
                 Optional<FoodItem> foodItem = foodItemRepository.findById(itemId);
                 if (foodItem.isPresent()) {
                     MinorItem newItem = new MinorItemBuilder().user(user).foodItem(foodItem.get()).build();
@@ -204,6 +205,8 @@ public class UserService implements UserDetailsService {
                 } else {
                     throw new RuntimeException("Item not found");
                 }
+            }, () -> {
+                throw new RuntimeException("User not found");
             });
             return new ResponseEntity("Item Updated", HttpStatus.OK);
         } catch (Exception e) {
@@ -219,8 +222,10 @@ public class UserService implements UserDetailsService {
      * @return NONE
      * */
     public void updateUserPassword(User user, String pass) {
-        user.setPassword(passwordEncoder.encode(pass));
-        userRepository.save(user);
+        if (AuthUtil.isValidPassword(pass)) {
+            user.setPassword(passwordEncoder.encode(pass));
+            userRepository.save(user);
+        }
     }
 
     /**
