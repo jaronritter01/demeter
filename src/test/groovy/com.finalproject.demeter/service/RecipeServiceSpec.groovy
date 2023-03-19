@@ -21,6 +21,7 @@ import com.finalproject.demeter.util.InventoryItemBuilder
 import com.finalproject.demeter.util.PersonalRecipeItemBuilder
 import com.finalproject.demeter.util.RecipeBuilder
 import com.finalproject.demeter.util.RecipeItemBuilder
+import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -60,7 +61,7 @@ class RecipeServiceSpec extends Specification{
             Recipe recipe = new RecipeBuilder().id(Long.valueOf(i.toString()))
                     .name(String.format("Test Recipe %d", i))
                     .description(String.format("Test Recipe %d Description", i)).isPublic(true)
-                    .cookTime(100).avgRating(5.0F).reviewCount(10L).build()
+                    .avgRating(5.0F).reviewCount(10L).build()
             recipeList.add(recipe)
         }
 
@@ -147,7 +148,6 @@ class RecipeServiceSpec extends Specification{
         RecipeUpload ru = new RecipeUpload()
         ru.setRecipeName("test Recipe")
         ru.setRecipeDescription("test recipe Description")
-        ru.setCookTime(100)
         ru.setIngredients(ingredientList)
         foodItemRepository.findById(_) >> Optional.of(foodItemOne)
 
@@ -171,7 +171,6 @@ class RecipeServiceSpec extends Specification{
         RecipeUpload ru = new RecipeUpload()
         ru.setRecipeName("test Recipe")
         ru.setRecipeDescription("test recipe Description")
-        ru.setCookTime(100)
         ru.setIngredients(ingredientList)
         foodItemRepository.findById(_ as Long) >> Optional.empty()
 
@@ -192,7 +191,6 @@ class RecipeServiceSpec extends Specification{
         RecipeUpload ru = new RecipeUpload()
         ru.setRecipeName("test Recipe")
         ru.setRecipeDescription("test recipe Description")
-        ru.setCookTime(100)
         ru.setIngredients(ingredientList)
 
         when:
@@ -215,7 +213,6 @@ class RecipeServiceSpec extends Specification{
         RecipeUpload ru = new RecipeUpload()
         ru.setRecipeName("test Recipe")
         ru.setRecipeDescription("test recipe Description")
-        ru.setCookTime(100)
         ru.setIngredients(ingredientList)
 
         when:
@@ -324,6 +321,20 @@ class RecipeServiceSpec extends Specification{
         1 * recipeRepository.findAllPublic(_) >> new PageImpl<Recipe>(new ArrayList<Recipe>())
     }
 
+    def "when a valid method def is passed, a 200 should be returned" () {
+        given:
+        RecipeQuery rq = new RecipeQuery()
+        rq.setMethod("name")
+        rq.setValue("chicken")
+
+        when:
+        ResponseEntity response = recipeService.getQueriedRecipes(rq, RecipeService.DEFAULT_PAGE)
+
+        then:
+        1 * recipeRepository.findRecipeLike(_,_) >> new PageImpl<Recipe>(new ArrayList<Recipe>())
+        response.getStatusCode() == HttpStatus.OK && response.body instanceof HashMap
+    }
+
     def "when an invalid method def is passed, a bad request should be returned" () {
         given:
         RecipeQuery rq = new RecipeQuery()
@@ -335,64 +346,6 @@ class RecipeServiceSpec extends Specification{
 
         then:
         response.getStatusCode() == HttpStatus.BAD_REQUEST && response.body == "Invalid Method"
-    }
-
-    def "when a valid method def (less) is passed, a 200 and a list should be returned" () {
-        given:
-        RecipeQuery rq = new RecipeQuery()
-        rq.setMethod("lesstime")
-        rq.setValue("2")
-        recipeRepository.findRecipeWithTimeLess(_,_) >> new PageImpl<>(new ArrayList<Recipe>())
-        RecipeService.createReturnMap(_) >> new HashMap<String, Object>()
-
-        when:
-        ResponseEntity response = recipeService.getQueriedRecipes(rq, RecipeService.DEFAULT_PAGE)
-
-        then:
-        response.getStatusCode() == HttpStatus.OK && response.body instanceof HashMap
-    }
-
-    def "when a valid method def (less) and an invalid value is passed, a 400" () {
-        given:
-        RecipeQuery rq = new RecipeQuery()
-        rq.setMethod("lesstime")
-        rq.setValue("asdf")
-        recipeRepository.findRecipeWithTimeLess(_,_) >> {throw new NumberFormatException()}
-
-        when:
-        ResponseEntity response = recipeService.getQueriedRecipes(rq, RecipeService.DEFAULT_PAGE)
-
-        then:
-        response.getStatusCode() == HttpStatus.BAD_REQUEST && response.body == "Please pass a valid number"
-    }
-
-    def "when a valid method def (more) is passed, a 200 and a list should be returned" () {
-        given:
-        RecipeQuery rq = new RecipeQuery()
-        rq.setMethod("moretime")
-        rq.setValue("2")
-        recipeRepository.findRecipeWithTimeMore(_,_) >> new PageImpl<>(new ArrayList<Recipe>())
-        RecipeService.createReturnMap(_) >> new HashMap<String, Object>()
-
-        when:
-        ResponseEntity response = recipeService.getQueriedRecipes(rq, RecipeService.DEFAULT_PAGE)
-
-        then:
-        response.getStatusCode() == HttpStatus.OK && response.body instanceof HashMap
-    }
-
-    def "when a valid method def (more) and an invalid value is passed, a 400" () {
-        given:
-        RecipeQuery rq = new RecipeQuery()
-        rq.setMethod("moretime")
-        rq.setValue("asdf")
-        recipeRepository.findRecipeWithTimeMore(_,_) >> {throw new NumberFormatException()}
-
-        when:
-        ResponseEntity response = recipeService.getQueriedRecipes(rq, RecipeService.DEFAULT_PAGE)
-
-        then:
-        response.getStatusCode() == HttpStatus.BAD_REQUEST && response.body == "Please pass a valid number"
     }
 
     def "the default query is invoked" () {

@@ -14,7 +14,6 @@ public class Recipe {
     private String name;
     @Column(length = 2048)
     private String description;
-    private Integer cookTime;
     @Transient
     private Float avgRating;
     @Transient

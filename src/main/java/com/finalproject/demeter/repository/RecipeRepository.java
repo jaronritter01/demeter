@@ -28,17 +28,5 @@ public interface RecipeRepository extends JpaRepository<Recipe, Long> {
     )
     Page<Recipe> findRecipeLike(String s, Pageable page);
 
-    @Query(
-            value = "SELECT * FROM recipes r WHERE r.cook_time <= ?1 AND r.is_public=true",
-            nativeQuery = true
-    )
-    Page<Recipe> findRecipeWithTimeLess(int time, Pageable page);
-
-    @Query(
-            value = "SELECT * FROM recipes r WHERE r.cook_time >= ?1 AND r.is_public=true",
-            nativeQuery = true
-    )
-    Page<Recipe> findRecipeWithTimeMore(int time, Pageable page);
-
     Recipe findById(long id);
 }

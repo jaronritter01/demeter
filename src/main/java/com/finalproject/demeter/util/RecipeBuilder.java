@@ -20,11 +20,6 @@ public class RecipeBuilder {
         return this;
     }
 
-    public RecipeBuilder cookTime(Integer time) {
-        recipe.setCookTime(time);
-        return this;
-    }
-
     public RecipeBuilder avgRating(Float val) {
         recipe.setAvgRating(val);
         return this;

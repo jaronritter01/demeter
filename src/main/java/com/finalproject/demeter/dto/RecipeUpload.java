@@ -8,6 +8,5 @@ import java.util.List;
 public class RecipeUpload {
     private String recipeName;
     private String recipeDescription;
-    private Integer cookTime;
     private List<PersonalRecipeItem> ingredients;
 }

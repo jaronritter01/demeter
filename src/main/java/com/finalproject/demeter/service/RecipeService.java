@@ -46,7 +46,6 @@ public class RecipeService {
             .id(0)
             .name("Default Recipe")
             .description("Default Description")
-            .cookTime(60)
             .avgRating(0F)
             .reviewCount(0L)
             .isPublic(true)
@@ -58,16 +57,12 @@ public class RecipeService {
     }};
 
     enum QueryMethod {
-        LESS,
-        MORE,
         NAME,
         DESC,
         DEFAULT
     }
 
     private final Map<String, QueryMethod> queryMap = new MapBuilder<String, QueryMethod>()
-            .put("lesstime", QueryMethod.LESS)
-            .put("moretime", QueryMethod.MORE)
             .put("desc", QueryMethod.DESC)
             .put("name", QueryMethod.NAME)
             .put("default", QueryMethod.DEFAULT)
@@ -175,7 +170,6 @@ public class RecipeService {
             Recipe newRecipe = new RecipeBuilder()
                     .name(personalRecipe.getRecipeName())
                     .description(personalRecipe.getRecipeDescription())
-                    .cookTime(personalRecipe.getCookTime())
                     .isPublic(false).build();
 
             // Set up for the save of the items
@@ -383,6 +377,12 @@ public class RecipeService {
         return returnMap;
     }
 
+    /**
+     * Used to get recipes from the database
+     * @param query: DTO for querying the db
+     * @param pageSettings: DTO for setting the pagination settings
+     * @return: a response entity representing the status of the operation
+     * */
     public ResponseEntity<?> getQueriedRecipes(RecipeQuery query, PaginationSetting pageSettings) {
         QueryMethod method = queryMap.get(query.getMethod().toLowerCase());
         Pageable page = PageRequest.of(pageSettings.getPageNumber(), pageSettings.getPageSize());
@@ -398,33 +398,9 @@ public class RecipeService {
                     return new ResponseEntity<>("Invalid Query", HttpStatus.BAD_REQUEST);
                 }
                 Page<Recipe> results = recipeRepository.findRecipeLike(query.getValue(), page);
-                results.forEach(recipe -> setRecipeRatings(recipe));
+                results.forEach(this::setRecipeRatings);
                 HashMap<String, Object> returnMap = createReturnMap(results);
                 return new ResponseEntity<>(returnMap, HttpStatus.OK);
-            }
-            case LESS: {
-                try {
-                    Page<Recipe> results = recipeRepository.findRecipeWithTimeLess(
-                            Integer.parseInt(query.getValue()), page
-                    );
-                    results.forEach(recipe -> setRecipeRatings(recipe));
-                    HashMap<String, Object> returnMap = createReturnMap(results);
-                    return new ResponseEntity<>(returnMap, HttpStatus.OK);
-                } catch (Exception e) {
-                    return new ResponseEntity<>("Please pass a valid number", HttpStatus.BAD_REQUEST);
-                }
-            }
-            case MORE: {
-                try {
-                    Page<Recipe> results = recipeRepository.findRecipeWithTimeMore(
-                            Integer.parseInt(query.getValue()), page
-                    );
-                    results.forEach(recipe -> setRecipeRatings(recipe));
-                    HashMap<String, Object> returnMap = createReturnMap(results);
-                    return new ResponseEntity<>(returnMap, HttpStatus.OK);
-                } catch (Exception e) {
-                    return new ResponseEntity<>("Please pass a valid number", HttpStatus.BAD_REQUEST);
-                }
             }
             case DEFAULT: {
                 HashMap<String, Object> returnMap = new HashMap<>();
