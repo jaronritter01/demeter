@@ -5,6 +5,7 @@ import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.FoodMark;
 import com.finalproject.demeter.dto.UpdateInventory;
+import com.finalproject.demeter.service.FoodService;
 import com.finalproject.demeter.service.UserService;
 import com.finalproject.demeter.util.JwtUtil;
 import org.slf4j.Logger;
@@ -24,10 +25,12 @@ public class InventoryController {
     private Logger log = LoggerFactory.getLogger(InventoryController.class);
     private JwtUtil jwtUtil = new JwtUtil();
     private UserService userService;
+    private FoodService foodService;
 
     @Autowired
-    public InventoryController(UserService userService) {
+    public InventoryController(UserService userService, FoodService foodService) {
         this.userService = userService;
+        this.foodService = foodService;
     }
 
     @PostMapping("/markItem")
@@ -54,6 +57,21 @@ public class InventoryController {
         Optional<User> user = userService.getUserFromJwtToken(jwt);
         if (user.isPresent()) {
             return userService.getInventory(user.get());
+        }
+        return new ArrayList<>();
+    }
+
+    /**
+     * The function is an endpoint to find the substitution foodItems for a foodItem
+     * @param jwt - authentication/username
+     * @param id - the id for a foodItem that needs substitution
+     * @return a list or empty list of foodItems
+     */
+    @GetMapping("/getSub")
+    List<FoodItem> getSubItems(@RequestHeader("AUTHORIZATION") String jwt, @RequestParam Long id) {
+        Optional<User> user = userService.getUserFromJwtToken(jwt);
+        if (user.isPresent()) {
+            return foodService.getSubItems(user.get(), id);
         }
         return new ArrayList<>();
     }
