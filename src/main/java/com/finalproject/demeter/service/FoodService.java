@@ -39,7 +39,7 @@ public class FoodService {
      */
     public List<FoodItem> getSubItems(User user, long missingFoodItemId) {
         List<Substitution> possibleSubs = substitutionsRepository.findByMissingItemId(missingFoodItemId);
-        List<Long> foodItemIds = inventoryRepository.getFoodItemsByUserId(user.getId());
+        List<Long> foodItemIds = inventoryRepository.getUserInventoryFoodItemIdsByUserId(user.getId());
         List<FoodItem> foundSubFoodItems = new ArrayList<>();
 
         try {

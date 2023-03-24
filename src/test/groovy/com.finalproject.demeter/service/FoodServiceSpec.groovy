@@ -6,6 +6,7 @@ import com.finalproject.demeter.dao.User
 import com.finalproject.demeter.repository.FoodItemRepository
 import com.finalproject.demeter.repository.InventoryRepository
 import com.finalproject.demeter.repository.SubstitutionsRepository
+import com.finalproject.demeter.util.FoodItemBuilder
 import spock.lang.Specification
 
 class FoodServiceSpec extends Specification{
@@ -31,17 +32,11 @@ class FoodServiceSpec extends Specification{
         user.setPassword("password")
         user.setUsername("username")
 
-        foundFoodItem.setId(40L)
-        foundFoodItem.setDescription("desc")
-        foundFoodItem.setName("Name")
-        foundFoodItem.setPicUrl("url")
-        foundFoodItem.setReusable(true)
 
-        missingFoodItem.setId(90L)
-        missingFoodItem.setDescription("desc")
-        missingFoodItem.setName("Name")
-        missingFoodItem.setPicUrl("url")
-        missingFoodItem.setReusable(true)
+        foundFoodItem = new FoodItemBuilder().id(40L).name("item1")
+                .description("item 1 description").reusable(false).picUrl("randomUrl").build()
+        missingFoodItem = new FoodItemBuilder().id(90L).name("item1")
+                .description("item 1 description").reusable(false).picUrl("randomUrl").build()
 
         sub.setId(40L)
         sub.setMissingItem(missingFoodItem)
@@ -61,7 +56,7 @@ class FoodServiceSpec extends Specification{
     def "return substitutions"() {
         given:
         substitutionsRepository.findByMissingItemId(90L) >> possibleSubs
-        inventoryRepository.getFoodItemsByUserId(user.getId()) >> foodItemIds
+        inventoryRepository.getUserInventoryFoodItemIdsByUserId(user.getId()) >> foodItemIds
         foodItemRepository.findFoodItemById(40L) >> foundFoodItem
 
         when:

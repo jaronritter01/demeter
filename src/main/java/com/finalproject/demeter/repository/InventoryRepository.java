@@ -14,5 +14,5 @@ public interface InventoryRepository extends JpaRepository<InventoryItem, Long> 
             value = "SELECT food_id FROM inventory_items i WHERE i.user_id = ?1",
             nativeQuery = true
     )
-    List<Long> getFoodItemsByUserId(long user_id);
+    List<Long> getUserInventoryFoodItemIdsByUserId(long user_id);
 }
