@@ -252,6 +252,30 @@ class RecipeServiceSpec extends Specification{
         !canBeMade
     }
 
+    def "When a user has more than enough ingredients for a recipe and a preference list, but no item in the recipe is marked, the user can make it" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+        DislikedItem dislikedItem = new DislikedItemBuilder().id(1L).user(user).foodItem(foodItemTwo).build()
+        Optional<List<DislikedItem>> userPreferences = Optional.of(List.of(dislikedItem))
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(10F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences)
+
+        then:
+        canBeMade
+    }
+
     def "When a user has more than enough ingredients for a recipe, true should be returned" () {
         given:
         List<RecipeItem> recipeItems = new ArrayList<>()
