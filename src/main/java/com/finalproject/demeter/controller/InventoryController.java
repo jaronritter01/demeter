@@ -60,7 +60,6 @@ public class InventoryController {
         return new ArrayList<>();
     }
 
-<<<<<<< HEAD
     @PostMapping("/addDislikedItem")
     ResponseEntity<?> addDislikedItem(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody Long foodItemId) {
         return userService.addDislikedItem(jwt, foodItemId);
@@ -75,7 +74,6 @@ public class InventoryController {
     @PostMapping("/getDislikedItems")
     ResponseEntity<?> getDislikedItems(@RequestHeader("AUTHORIZATION") String jwt) {
         return userService.getDislikedItems(jwt);
-=======
     /**
      * The function is an endpoint to find the substitution foodItems for a foodItem
      * @param jwt - authentication/username
@@ -89,6 +87,5 @@ public class InventoryController {
             return foodService.getSubItems(user.get(), id);
         }
         return new ArrayList<>();
->>>>>>> main
     }
 }
