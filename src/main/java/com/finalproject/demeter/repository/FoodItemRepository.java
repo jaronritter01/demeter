@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface FoodItemRepository extends JpaRepository<FoodItem, Long> {
     List<FoodItem> findFoodItemsByReusable(Boolean isResuable);
+
+    FoodItem findFoodItemById(long id);
 }
