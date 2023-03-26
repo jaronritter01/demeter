@@ -1,5 +1,6 @@
 package com.finalproject.demeter.service
 
+import com.finalproject.demeter.dao.DislikedItem
 import com.finalproject.demeter.dao.FoodItem
 import com.finalproject.demeter.dao.InventoryItem
 import com.finalproject.demeter.dao.MinorItem
@@ -7,11 +8,13 @@ import com.finalproject.demeter.dao.PasswordResetToken
 import com.finalproject.demeter.dao.User
 import com.finalproject.demeter.dto.SignUpDto
 import com.finalproject.demeter.dto.UpdateInventory
+import com.finalproject.demeter.repository.DislikedItemRepository
 import com.finalproject.demeter.repository.FoodItemRepository
 import com.finalproject.demeter.repository.InventoryRepository
 import com.finalproject.demeter.repository.MinorItemRepository
 import com.finalproject.demeter.repository.PasswordTokenRepository
 import com.finalproject.demeter.repository.UserRepository
+import com.finalproject.demeter.util.DislikedItemBuilder
 import com.finalproject.demeter.util.FoodItemBuilder
 import com.finalproject.demeter.util.InventoryItemBuilder
 import com.finalproject.demeter.util.JwtUtil
@@ -34,6 +37,7 @@ class UserServiceSpec extends Specification {
     InventoryRepository inventoryRepository = Mock()
     MinorItemRepository minorItemRepository = Mock()
     JwtUtil jwtUtil = Mock()
+    DislikedItemRepository dislikedItemRepository = Mock()
     UserService userService
     User user = new User()
     String userJWT = "randomRealWorkingJWT"
@@ -51,12 +55,177 @@ class UserServiceSpec extends Specification {
 
     void setup(){
         userService = new UserService(userRepository, passwordEncoder, passwordTokenRepository, foodItemRepository,
-                inventoryRepository, minorItemRepository, jwtUtil)
+                inventoryRepository, minorItemRepository, jwtUtil, dislikedItemRepository)
         user.username = "jSmith"
         user.password = "testingPassword1!"
         user.firstName = "John"
         user.lastName = "Smith"
         user.email = "johns@gmail.com"
+    }
+
+    def "When a valid user is passed and item id, the disliked item should be removed" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        DislikedItem dl = new DislikedItemBuilder().id(1L).user(user).foodItem(foodItem1).build()
+        List<DislikedItem> dislikedItems = List.of(dl)
+        dislikedItemRepository.findByUser(user) >> Optional.of(dislikedItems)
+
+        when:
+        ResponseEntity<?> re = userService.removeDislikedItem(userJWT, 1L)
+
+        then:
+        1 * dislikedItemRepository.delete(_)
+        re.statusCode == HttpStatus.OK
+        re.body == "Successful Removal"
+    }
+
+    def "When a valid user is passed and item id but the user has no disliked items, no items should try to be removed" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        dislikedItemRepository.findByUser(user) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.removeDislikedItem(userJWT, 1L)
+
+        then:
+        0 * dislikedItemRepository.delete(_)
+        re.statusCode == HttpStatus.OK
+        re.body == "Nothing to Remove"
+    }
+
+    def "When an valid user is passed, no items should try to be removed" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.removeDislikedItem(userJWT, 1L)
+
+        then:
+        0 * dislikedItemRepository.delete(_)
+        re.statusCode == HttpStatus.NOT_FOUND
+        re.body == "User could not be found"
+    }
+
+    def "When a valid user is passed and item id but the user doesn't have that item disliked, the disliked item should not be removed" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        DislikedItem dl = new DislikedItemBuilder().id(1L).user(user).foodItem(foodItem1).build()
+        List<DislikedItem> dislikedItems = List.of(dl)
+        dislikedItemRepository.findByUser(user) >> Optional.of(dislikedItems)
+
+        when:
+        ResponseEntity<?> re = userService.removeDislikedItem(userJWT, 2L)
+
+        then:
+        0 * dislikedItemRepository.delete(_)
+        re.statusCode == HttpStatus.NOT_FOUND
+        re.body == "Item to be removed was not in the disliked items for user with email: " + user.email
+    }
+
+    def "When a valid user is passed, the disliked item should be returned" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        DislikedItem dl = new DislikedItemBuilder().id(1L).user(user).foodItem(foodItem1).build()
+        List<DislikedItem> dislikedItems = List.of(dl)
+        dislikedItemRepository.findByUser(user) >> Optional.of(dislikedItems)
+
+        when:
+        ResponseEntity<?> re = userService.getDislikedItems(userJWT)
+
+        then:
+        re.statusCode == HttpStatus.OK
+        re.body == dislikedItems
+    }
+
+    def "When an invalid user is passed, An error message and a 404 should be returned" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.getDislikedItems(userJWT)
+
+        then:
+        re.statusCode == HttpStatus.NOT_FOUND
+        re.body == "User could not be found"
+    }
+
+    def "When a valid user is passed but they have no disliked items, an empty array should be returned" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        dislikedItemRepository.findByUser(user) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.getDislikedItems(userJWT)
+
+        then:
+        re.statusCode == HttpStatus.OK
+        re.body instanceof ArrayList
+        ((List) re.body).size() == 0
+    }
+
+    def "When a valid item and user are passed, the disliked item should be saved" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        foodItemRepository.findById(1L) >> Optional.of(foodItem1)
+
+        when:
+        ResponseEntity<?> re = userService.addDislikedItem(userJWT, 1L)
+
+        then:
+        re.statusCode == HttpStatus.OK
+        re.body == "Preference Saved"
+        1 * dislikedItemRepository.save(_)
+    }
+
+    def "When a valid item and invalid user are passed, the disliked item should not be saved" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.addDislikedItem(userJWT, 1L)
+
+        then:
+        re.statusCode == HttpStatus.NOT_FOUND
+        re.body == "User could not be found"
+        0 * dislikedItemRepository.save(_)
+    }
+
+    def "When no item and a valid user are passed, the disliked item should not be saved" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+
+        when:
+        ResponseEntity<?> re = userService.addDislikedItem(userJWT, null)
+
+        then:
+        re.statusCode == HttpStatus.BAD_REQUEST
+        re.body == "You must provide the id of a food item"
+        0 * dislikedItemRepository.save(_)
+    }
+
+    def "When a valid item and a valid user are passed, but the food item does not exist, the disliked item should not be saved" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        foodItemRepository.findById(1L) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.addDislikedItem(userJWT, 1L)
+
+        then:
+        re.statusCode == HttpStatus.NOT_FOUND
+        re.body == "FoodItem with id 1 could not be found"
+        0 * dislikedItemRepository.save(_)
     }
 
     def "when a valid user and password are passed, the password should be encrypted and saved" () {
@@ -493,7 +662,6 @@ class UserServiceSpec extends Specification {
     def "Given an invalid token and isTokenValid could not be found"() {
         given:
         String token = UUID.randomUUID().toString()
-        PasswordResetToken pToken = new PasswordResetToken(user, token)
         passwordTokenRepository.findByToken(token) >> Optional.empty()
 
         when:

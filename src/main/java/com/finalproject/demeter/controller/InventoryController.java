@@ -1,6 +1,5 @@
 package com.finalproject.demeter.controller;
 
-import com.finalproject.demeter.dao.FoodItem;
 import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.FoodMark;
@@ -39,11 +38,11 @@ public class InventoryController {
     @PostMapping("/updateInventory")
     public ResponseEntity<?> updateInventory(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody UpdateInventory item) {
         Optional<User> user = userService.getUserFromJwtToken(jwt);
-        ResponseEntity response = userService.updateInventory(user.get(), item);
+        ResponseEntity<String> response = userService.updateInventory(user.get(), item);
         if (response.getBody().equals("Inventory was saved") ||
                 response.getBody().equals("Inventory Item was Removed")) {
             List<InventoryItem> inventory = userService.getInventory(user.get());
-            return new ResponseEntity(inventory, HttpStatus.OK);
+            return new ResponseEntity<>(inventory, HttpStatus.OK);
         }
 
         return response;
@@ -56,5 +55,21 @@ public class InventoryController {
             return userService.getInventory(user.get());
         }
         return new ArrayList<>();
+    }
+
+    @PostMapping("/addDislikedItem")
+    ResponseEntity<?> addDislikedItem(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody Long foodItemId) {
+        return userService.addDislikedItem(jwt, foodItemId);
+    }
+
+    @PostMapping("/removeDislikedItem")
+    ResponseEntity<?> removeDislikedItem(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody Long foodItemId) {
+        return userService.removeDislikedItem(jwt, foodItemId);
+    }
+
+
+    @PostMapping("/getDislikedItems")
+    ResponseEntity<?> getDislikedItems(@RequestHeader("AUTHORIZATION") String jwt) {
+        return userService.getDislikedItems(jwt);
     }
 }
