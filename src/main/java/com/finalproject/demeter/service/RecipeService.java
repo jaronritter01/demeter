@@ -30,6 +30,7 @@ public class RecipeService {
     private FoodItemRepository foodItemRepository;
     private PersonalRecipeRepository personalRecipeRepository;
     private UserService userService;
+    private DislikedItemRepository dislikedItemRepository;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
     private static final PaginationSetting DEFAULT_PAGE = new PaginationSettingBuilder()
@@ -70,13 +71,15 @@ public class RecipeService {
 
     public RecipeService(RecipeRepository recipeRepository, RecipeItemRepository recipeItemRepository,
                          RecipeRatingRepository recipeRatingRepository, UserService userService,
-                         FoodItemRepository foodItemRepository, PersonalRecipeRepository personalRecipeRepository) {
+                         FoodItemRepository foodItemRepository, PersonalRecipeRepository personalRecipeRepository,
+                         DislikedItemRepository dislikedItemRepository) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
         this.recipeRatingRepository = recipeRatingRepository;
         this.userService = userService;
         this.foodItemRepository = foodItemRepository;
         this.personalRecipeRepository = personalRecipeRepository;
+        this.dislikedItemRepository = dislikedItemRepository;
     }
 
     /**
@@ -94,9 +97,11 @@ public class RecipeService {
         List<Recipe> recipeList = recipeRepository.findAllPublic();
         Optional<User> user = userService.getUserFromJwtToken(jwtToken);
         List<InventoryItem> userInventory = null;
+        Optional<List<DislikedItem>> userPreferences = Optional.empty();
 
         if (user.isPresent()) {
             userInventory = userService.getInventory(user.get());
+            userPreferences = dislikedItemRepository.findByUser(user.get());
         }
 
         if (userInventory != null) {
@@ -105,7 +110,7 @@ public class RecipeService {
                 Optional<List<RecipeItem>> recipeItems = recipeItemRepository.findRecipeItemsByRecipe(recipe);
                 if (recipeItems.isPresent()) {
                     // check to see what recipes can be made
-                    if (canRecipeBeMade(userInventory, recipeItems.get())) {
+                    if (canRecipeBeMade(userInventory, recipeItems.get(), userPreferences)) {
                         returnList.add(recipe);
                     }
                 }
@@ -260,9 +265,11 @@ public class RecipeService {
      * This checks a recipe against a user recipe to see if the recipe can be made.
      * @param userInventory: A given user's inventory.
      * @param recipeItems: The items required for a given recipe.
+     * @param userPreferences: Optional including the disliked items of a user.
      * @return A boolean representing if a recipe can be made with the current ingredients a user has.
      * */
-    private boolean canRecipeBeMade(List<InventoryItem> userInventory, List<RecipeItem> recipeItems) {
+    private boolean canRecipeBeMade(List<InventoryItem> userInventory, List<RecipeItem> recipeItems,
+                                    Optional<List<DislikedItem>> userPreferences) {
         if (recipeItems.size() == 0) {
             return false;
         }
@@ -275,8 +282,19 @@ public class RecipeService {
                 long currentInventoryItemId = inventoryItem.getFoodId().getId();
                 Float inventoryItemQuantity = inventoryItem.getQuantity();
                 if (currentFoodItemId == currentInventoryItemId && inventoryItemQuantity >= recipeQuantity) {
-                    found = true;
-                    break;
+                    // If the user has preferences
+                    if (userPreferences.isPresent()){
+                        // If the items is not a disliked on, we can say the user has the item
+                        if (isNotDislikedItem(recipeItem.getFoodItem(), userPreferences.get())){
+                            found = true;
+                            break;
+                        }
+                    }
+                    // If they do not
+                    else {
+                        found = true;
+                        break;
+                    }
                 }
             }
 
@@ -285,6 +303,17 @@ public class RecipeService {
             }
         }
 
+        return true;
+    }
+
+    private boolean isNotDislikedItem(FoodItem foodItem, List<DislikedItem> dislikedItems) {
+        for (DislikedItem dislikedItem : dislikedItems){
+            // If the food item has the same id, it has been marked as disliked
+            if (foodItem.getId() == dislikedItem.getFoodItem().getId()){
+                return false;
+            }
+        }
+        // If the food item was not found in the users disliked items
         return true;
     }
 

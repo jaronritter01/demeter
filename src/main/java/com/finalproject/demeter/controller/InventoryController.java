@@ -1,6 +1,5 @@
 package com.finalproject.demeter.controller;
 
-import com.finalproject.demeter.dao.FoodItem;
 import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.FoodMark;
@@ -42,11 +41,11 @@ public class InventoryController {
     @PostMapping("/updateInventory")
     public ResponseEntity<?> updateInventory(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody UpdateInventory item) {
         Optional<User> user = userService.getUserFromJwtToken(jwt);
-        ResponseEntity response = userService.updateInventory(user.get(), item);
+        ResponseEntity<String> response = userService.updateInventory(user.get(), item);
         if (response.getBody().equals("Inventory was saved") ||
                 response.getBody().equals("Inventory Item was Removed")) {
             List<InventoryItem> inventory = userService.getInventory(user.get());
-            return new ResponseEntity(inventory, HttpStatus.OK);
+            return new ResponseEntity<>(inventory, HttpStatus.OK);
         }
 
         return response;
@@ -61,8 +60,39 @@ public class InventoryController {
         return new ArrayList<>();
     }
 
+
     /**
-     * The function is an endpoint to find the substitution foodItems for a foodItem
+     * This is used to add an item to a users disliked items
+     * @param jwt - the user's jwt token
+     * @param foodItemId - the id of the food item the user wants to dislike
+     * @return A ResponseEntity that contains the status of the operation.
+     */
+    @PostMapping("/addDislikedItem")
+    ResponseEntity<?> addDislikedItem(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody Long foodItemId) {
+        return userService.addDislikedItem(jwt, foodItemId);
+    }
+
+    /**
+     * This function is used to removed an item from the users disliked items.
+     * @param jwt - a users jwt token
+     * @param foodItemId - the id of the food item that the user wants to remove
+     * @return a ResponseEntity that will contain the status of the operation
+     */
+    @PostMapping("/removeDislikedItem")
+    ResponseEntity<?> removeDislikedItem(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody Long foodItemId) {
+        return userService.removeDislikedItem(jwt, foodItemId);
+    }
+
+    /**
+     * This is used to retreive a users disliked items.
+     * @param jwt - the users jwt token
+     * @return ResponseEntity the will contain an error or a list of items
+     */
+    @PostMapping("/getDislikedItems")
+    ResponseEntity<?> getDislikedItems(@RequestHeader("AUTHORIZATION") String jwt) {
+        return userService.getDislikedItems(jwt);
+    /**
+     * The function is an endpoint to find the substitution foodItems for a foodItem.
      * @param jwt - authentication/username
      * @param id - the id for a foodItem that needs substitution
      * @return a list or empty list of foodItems

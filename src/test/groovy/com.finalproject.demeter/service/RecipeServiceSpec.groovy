@@ -1,5 +1,6 @@
 package com.finalproject.demeter.service
 
+import com.finalproject.demeter.dao.DislikedItem
 import com.finalproject.demeter.dao.FoodItem
 import com.finalproject.demeter.dao.InventoryItem
 import com.finalproject.demeter.dao.PersonalRecipe
@@ -11,17 +12,18 @@ import com.finalproject.demeter.dto.PersonalRecipeItem
 import com.finalproject.demeter.dto.RecipeQuery
 import com.finalproject.demeter.dto.RecipeUpload
 import com.finalproject.demeter.dto.UpdateRecipeReview
+import com.finalproject.demeter.repository.DislikedItemRepository
 import com.finalproject.demeter.repository.FoodItemRepository
 import com.finalproject.demeter.repository.PersonalRecipeRepository
 import com.finalproject.demeter.repository.RecipeItemRepository
 import com.finalproject.demeter.repository.RecipeRatingRepository
 import com.finalproject.demeter.repository.RecipeRepository
+import com.finalproject.demeter.util.DislikedItemBuilder
 import com.finalproject.demeter.util.FoodItemBuilder
 import com.finalproject.demeter.util.InventoryItemBuilder
 import com.finalproject.demeter.util.PersonalRecipeItemBuilder
 import com.finalproject.demeter.util.RecipeBuilder
 import com.finalproject.demeter.util.RecipeItemBuilder
-import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -35,8 +37,9 @@ class RecipeServiceSpec extends Specification{
     UserService userService = Mock()
     FoodItemRepository foodItemRepository= Mock()
     PersonalRecipeRepository personalRecipeRepository = Mock()
+    DislikedItemRepository dislikedItemRepository = Mock()
     RecipeService recipeService = new RecipeService(recipeRepository, recipeItemRepository, recipeRatingRepository,
-            userService, foodItemRepository, personalRecipeRepository)
+            userService, foodItemRepository, personalRecipeRepository, dislikedItemRepository)
     User user = new User()
     FoodItem foodItemOne = null
     FoodItem foodItemTwo = null
@@ -225,9 +228,11 @@ class RecipeServiceSpec extends Specification{
         re.body == "User was not Found"
     }
 
-    def "When a user has more than enough ingredients for a recipe, true should be returned" () {
+    def "When a user has more than enough ingredients for a recipe, but an item in the recipe is marked as disliked, the user cannot make it" () {
         given:
         List<RecipeItem> recipeItems = new ArrayList<>()
+        DislikedItem dislikedItem = new DislikedItemBuilder().id(1L).user(user).foodItem(foodItemOne).build()
+        Optional<List<DislikedItem>> userPreferences = Optional.of(List.of(dislikedItem))
 
         and:
         Recipe recipe = recipeList.get(0)
@@ -241,7 +246,54 @@ class RecipeServiceSpec extends Specification{
         recipeItems.add(recipeItemOne)
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences)
+
+        then:
+        !canBeMade
+    }
+
+    def "When a user has more than enough ingredients for a recipe and a preference list, but no item in the recipe is marked, the user can make it" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+        DislikedItem dislikedItem = new DislikedItemBuilder().id(1L).user(user).foodItem(foodItemTwo).build()
+        Optional<List<DislikedItem>> userPreferences = Optional.of(List.of(dislikedItem))
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(10F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences)
+
+        then:
+        canBeMade
+    }
+
+    def "When a user has more than enough ingredients for a recipe, true should be returned" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+        Optional<List<DislikedItem>> userPreferences = Optional.empty()
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(10F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences)
 
         then:
         canBeMade
@@ -250,6 +302,7 @@ class RecipeServiceSpec extends Specification{
     def "When a user has just enough ingredients for a recipe, true should be returned" () {
         given:
         List<RecipeItem> recipeItems = new ArrayList<>()
+        Optional<List<DislikedItem>> userPreferences = Optional.empty()
 
         and:
         Recipe recipe = recipeList.get(0)
@@ -263,7 +316,7 @@ class RecipeServiceSpec extends Specification{
         recipeItems.add(recipeItemOne)
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems,userPreferences)
 
         then:
         canBeMade
@@ -272,6 +325,7 @@ class RecipeServiceSpec extends Specification{
     def "When a user does not enough ingredients for a recipe, false should be returned" () {
         given:
         List<RecipeItem> recipeItems = new ArrayList<>()
+        Optional<List<DislikedItem>> userPreferences = Optional.empty()
 
         and:
         Recipe recipe = recipeList.get(0)
@@ -285,7 +339,7 @@ class RecipeServiceSpec extends Specification{
         recipeItems.add(recipeItemOne)
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences)
 
         then:
         !canBeMade
@@ -294,6 +348,7 @@ class RecipeServiceSpec extends Specification{
     def "When a user does not have the right ingredients for a recipe, false should be returned" () {
         given:
         List<RecipeItem> recipeItems = new ArrayList<>()
+        Optional<List<DislikedItem>> userPreferences = Optional.empty()
 
         and:
         Recipe recipe = recipeList.get(0)
@@ -307,7 +362,7 @@ class RecipeServiceSpec extends Specification{
         recipeItems.add(recipeItemOne)
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences)
 
         then:
         !canBeMade

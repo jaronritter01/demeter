@@ -5,6 +5,7 @@ import com.finalproject.demeter.dto.SignUpDto;
 import com.finalproject.demeter.dto.UpdateInventory;
 import com.finalproject.demeter.repository.*;
 import com.finalproject.demeter.util.AuthUtil;
+import com.finalproject.demeter.util.DislikedItemBuilder;
 import com.finalproject.demeter.util.JwtUtil;
 import com.finalproject.demeter.util.MinorItemBuilder;
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ public class UserService implements UserDetailsService {
     private FoodItemRepository foodItemRepository;
     private InventoryRepository inventoryRepository;
     private MinorItemRepository minorItemRepository;
+    private DislikedItemRepository dislikedItemRepository;
     private Logger LOGGER = LoggerFactory.getLogger(UserService.class);
 
     private final Set<SimpleGrantedAuthority> authorities = new HashSet<>(){{
@@ -44,7 +46,7 @@ public class UserService implements UserDetailsService {
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        PasswordTokenRepository passwordTokenRepository, FoodItemRepository foodItemRepository,
                        InventoryRepository inventoryRepository, MinorItemRepository minorItemRepository,
-                       JwtUtil jwtUtil){
+                       JwtUtil jwtUtil, DislikedItemRepository dislikedItemRepository){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordTokenRepository = passwordTokenRepository;
@@ -52,6 +54,80 @@ public class UserService implements UserDetailsService {
         this.inventoryRepository = inventoryRepository;
         this.minorItemRepository = minorItemRepository;
         this.jwtUtil = jwtUtil;
+        this.dislikedItemRepository = dislikedItemRepository;
+    }
+
+    /**
+     * This is used to add a user preference to the db. i.e. allergy, disliked item, or foods they cannot eat.
+     * @param jwt: user JWT
+     * @param foodItemId: id of the food item that needs to be saved
+     * @return ResponseEntity with the status of the operation
+     * */
+    public ResponseEntity<?> addDislikedItem(String jwt, Long foodItemId) {
+        Optional<User> user = getUserFromJwtToken(jwt);
+        if (user.isPresent()) {
+            if (foodItemId != null) {
+                Optional<FoodItem> foodItem = foodItemRepository.findById(foodItemId);
+                if (foodItem.isPresent()){
+                    DislikedItem dislikedItem = new DislikedItemBuilder().user(user.get())
+                            .foodItem(foodItem.get()).build();
+                    dislikedItemRepository.save(dislikedItem);
+                    return new ResponseEntity<>("Preference Saved", HttpStatus.OK);
+                } else {
+                    String errorMessage = String.format("FoodItem with id %d could not be found", foodItemId);
+                    return new ResponseEntity<>(errorMessage, HttpStatus.NOT_FOUND);
+                }
+            } else {
+                return new ResponseEntity<>("You must provide the id of a food item", HttpStatus.BAD_REQUEST);
+            }
+        }
+        return new ResponseEntity<>("User could not be found", HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * This is used to get all the disliked items from a user.
+     * @param jwt: JWT for a user
+     * @return Response Entity that either has the items or an error
+     * */
+    public ResponseEntity<?> getDislikedItems(String jwt) {
+        Optional<User> user = getUserFromJwtToken(jwt);
+        if (user.isPresent()) {
+            Optional<List<DislikedItem>> dislikedItemsOpt = dislikedItemRepository.findByUser(user.get());
+            if (dislikedItemsOpt.isPresent()) {
+                return new ResponseEntity<>(dislikedItemsOpt.get(), HttpStatus.OK);
+            }
+            return new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK);
+        }
+        return new ResponseEntity<>("User could not be found", HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Used to remove an item from the user's disliked items;
+     * @param jwt: User JWT
+     * @param foodItemId: id of the item that needs to be removed
+     * @return ResponseEntity representing the status of the operation
+     * */
+    public ResponseEntity<?> removeDislikedItem(String jwt, Long foodItemId) {
+        Optional<User> user = getUserFromJwtToken(jwt);
+        if (user.isPresent()) {
+            Optional<List<DislikedItem>> dislikedItemsOpt = dislikedItemRepository.findByUser(user.get());
+            if (dislikedItemsOpt.isPresent()) {
+                List<DislikedItem> dislikedItems = dislikedItemsOpt.get();
+                for (DislikedItem item : dislikedItems) {
+                    if (item.getFoodItem().getId() == foodItemId) {
+                        dislikedItemRepository.delete(item);
+                        return new ResponseEntity<>("Successful Removal", HttpStatus.OK);
+                    }
+                }
+                String error = String.format(
+                        "Item to be removed was not in the disliked items for user with email: %s",
+                        user.get().getEmail()
+                );
+                return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+            }
+            return new ResponseEntity<>("Nothing to Remove", HttpStatus.OK);
+        }
+        return new ResponseEntity<>("User could not be found", HttpStatus.NOT_FOUND);
     }
 
     /**
