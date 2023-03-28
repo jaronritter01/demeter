@@ -1,5 +1,6 @@
 package com.finalproject.demeter.controller;
 
+import com.finalproject.demeter.dao.FoodItem;
 import com.finalproject.demeter.dao.InventoryItem;
 import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.FoodMark;
@@ -91,6 +92,7 @@ public class InventoryController {
     @PostMapping("/getDislikedItems")
     ResponseEntity<?> getDislikedItems(@RequestHeader("AUTHORIZATION") String jwt) {
         return userService.getDislikedItems(jwt);
+    }
     /**
      * The function is an endpoint to find the substitution foodItems for a foodItem.
      * @param jwt - authentication/username
