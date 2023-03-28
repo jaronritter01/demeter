@@ -25,6 +25,38 @@ public class RecipeController {
         return recipeService.getAllRecipes(pageSettings);
     }
 
+    /**
+     * Used to add a recipes to a users favorite list.
+     * @param jwt: Token needed to authenticate a user.
+     * @param recipeId: ID of the recipe the user wants to add.
+     * @return Response Entity that is bubbled up from the service layer.
+     * */
+    @PostMapping("/addFavoriteRecipes")
+    public ResponseEntity<?> addFavoriteRecipe(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody Long recipeId) {
+        return recipeService.addFavoriteRecipe(jwt, recipeId);
+    }
+
+    /**
+     * Used to remove a recipes to a users favorite list.
+     * @param jwt: Token needed to authenticate a user.
+     * @param recipeId: ID of the recipe the user wants to remove.
+     * @return Response Entity that is bubbled up from the service layer.
+     * */
+    @PostMapping("/removeFavoriteRecipes")
+    public ResponseEntity<?> removeFavoriteRecipe(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody Long recipeId) {
+        return recipeService.removeFavoriteRecipe(jwt, recipeId);
+    }
+
+    /**
+     * Used to retrieve the favorite list for a user.
+     * @param jwt: Token needed to authenticate a user.
+     * @return Response Entity that is bubbled up from the service layer.
+     * */
+    @PostMapping("/getFavoriteRecipes")
+    public ResponseEntity<?> getFavoriteRecipe(@RequestHeader("AUTHORIZATION") String jwt) {
+        return recipeService.getFavoriteRecipe(jwt);
+    }
+
     @GetMapping("/getRecipeItems")
     public ResponseEntity<?> getRecipeItemsByRecipeId(@RequestParam Long id) {
         return recipeService.getRecipeItemsById(id);
