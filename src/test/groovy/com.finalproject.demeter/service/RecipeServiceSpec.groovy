@@ -1,6 +1,7 @@
 package com.finalproject.demeter.service
 
 import com.finalproject.demeter.dao.DislikedItem
+import com.finalproject.demeter.dao.FavoriteRecipe
 import com.finalproject.demeter.dao.FoodItem
 import com.finalproject.demeter.dao.InventoryItem
 import com.finalproject.demeter.dao.PersonalRecipe
@@ -13,12 +14,14 @@ import com.finalproject.demeter.dto.RecipeQuery
 import com.finalproject.demeter.dto.RecipeUpload
 import com.finalproject.demeter.dto.UpdateRecipeReview
 import com.finalproject.demeter.repository.DislikedItemRepository
+import com.finalproject.demeter.repository.FavoriteRecipeRepository
 import com.finalproject.demeter.repository.FoodItemRepository
 import com.finalproject.demeter.repository.PersonalRecipeRepository
 import com.finalproject.demeter.repository.RecipeItemRepository
 import com.finalproject.demeter.repository.RecipeRatingRepository
 import com.finalproject.demeter.repository.RecipeRepository
 import com.finalproject.demeter.util.DislikedItemBuilder
+import com.finalproject.demeter.util.FavoriteRecipeBuilder
 import com.finalproject.demeter.util.FoodItemBuilder
 import com.finalproject.demeter.util.InventoryItemBuilder
 import com.finalproject.demeter.util.PersonalRecipeItemBuilder
@@ -38,8 +41,9 @@ class RecipeServiceSpec extends Specification{
     FoodItemRepository foodItemRepository= Mock()
     PersonalRecipeRepository personalRecipeRepository = Mock()
     DislikedItemRepository dislikedItemRepository = Mock()
+    FavoriteRecipeRepository favoriteRecipeRepository = Mock()
     RecipeService recipeService = new RecipeService(recipeRepository, recipeItemRepository, recipeRatingRepository,
-            userService, foodItemRepository, personalRecipeRepository, dislikedItemRepository)
+            userService, foodItemRepository, personalRecipeRepository, dislikedItemRepository, favoriteRecipeRepository)
     User user = new User()
     FoodItem foodItemOne = null
     FoodItem foodItemTwo = null
@@ -75,6 +79,136 @@ class RecipeServiceSpec extends Specification{
         reviewItem.setReviewId(1001)
 
         recipeReview.setId(1001)
+    }
+
+    def "When a valid JWT is passed, but the user cannot be found, an error should be returned" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.getFavoriteRecipe(_ as String)
+
+        then:
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "User not Found"
+    }
+
+    def "When a valid JWT is passed, but the user has no favorites, an empty list should be returned" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        favoriteRecipeRepository.findByUser(_) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.getFavoriteRecipe(_ as String)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == new ArrayList()
+    }
+
+    def "When a valid JWT is passed, the users favorite list should be returned" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        List<FavoriteRecipe> favoriteRecipes = List.of(
+                new FavoriteRecipeBuilder().id(1L).user(user).recipe(recipeList.get(0)).build()
+        )
+        favoriteRecipeRepository.findByUser(_) >> Optional.of(favoriteRecipes)
+        when:
+        ResponseEntity ru = recipeService.getFavoriteRecipe(_ as String)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == favoriteRecipes
+    }
+
+    def "When a valid JWT and invalid recipe id are passed, but the user cannot be found, the recipe shouldn't be removed from favorite list" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.empty()
+        List<FavoriteRecipe> favoriteRecipes = List.of(
+                new FavoriteRecipeBuilder().id(1L).user(user).recipe(recipeList.get(0)).build()
+        )
+        favoriteRecipeRepository.findByUser(_) >> Optional.of(favoriteRecipes)
+        when:
+        ResponseEntity ru = recipeService.removeFavoriteRecipe(_ as String, 2L)
+
+        then:
+        0 * favoriteRecipeRepository.delete(_)
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "User not Found"
+    }
+
+    def "When a valid JWT and invalid recipe id are passed, the recipe shouldn't be removed from favorite list" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        List<FavoriteRecipe> favoriteRecipes = List.of(
+                new FavoriteRecipeBuilder().id(1L).user(user).recipe(recipeList.get(0)).build()
+        )
+        favoriteRecipeRepository.findByUser(_) >> Optional.of(favoriteRecipes)
+        when:
+        ResponseEntity ru = recipeService.removeFavoriteRecipe(_ as String, 2L)
+
+        then:
+        0 * favoriteRecipeRepository.delete(_)
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "Recipe to remove was not found"
+    }
+
+    def "When a valid JWT and recipe id are passed, the recipe should be removed from favorite list" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        List<FavoriteRecipe> favoriteRecipes = List.of(
+                new FavoriteRecipeBuilder().id(1L).user(user).recipe(recipeList.get(0)).build()
+        )
+        favoriteRecipeRepository.findByUser(_) >> Optional.of(favoriteRecipes)
+        when:
+        ResponseEntity ru = recipeService.removeFavoriteRecipe(_ as String, 1L)
+
+        then:
+        1 * favoriteRecipeRepository.delete(_)
+        ru.statusCode == HttpStatus.OK
+        ru.body == "Removal Successful"
+    }
+
+    def "When a valid JWT and recipe id are passed, the recipe should be added to favorite list" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        recipeRepository.findById(_) >> Optional.of(recipeList.get(0))
+
+        when:
+        ResponseEntity ru = recipeService.addFavoriteRecipe(_ as String, 1L)
+
+        then:
+        1 * favoriteRecipeRepository.save(_)
+        ru.statusCode == HttpStatus.OK
+        ru.body == "Favorite saved"
+    }
+
+    def "When a valid JWT and invalid recipe id are passed, the recipe shouldn't be added to favorites" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        recipeRepository.findById(_) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.addFavoriteRecipe(_ as String, 1L)
+
+        then:
+        0 * favoriteRecipeRepository.save(_)
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "Recipe not Found"
+    }
+
+    def "When an invalid JWT is passed, the recipe shouldn't be added to favorites" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.empty()
+        recipeRepository.findById(_) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.addFavoriteRecipe(_ as String, 1L)
+
+        then:
+        0 * favoriteRecipeRepository.save(_)
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "User not Found"
     }
 
     def "When a valid JWT and recipe id are passed, the recipe should be removed" () {

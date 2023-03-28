@@ -31,6 +31,7 @@ public class RecipeService {
     private PersonalRecipeRepository personalRecipeRepository;
     private UserService userService;
     private DislikedItemRepository dislikedItemRepository;
+    private FavoriteRecipeRepository favoriteRecipeRepository;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
     private static final PaginationSetting DEFAULT_PAGE = new PaginationSettingBuilder()
@@ -72,7 +73,8 @@ public class RecipeService {
     public RecipeService(RecipeRepository recipeRepository, RecipeItemRepository recipeItemRepository,
                          RecipeRatingRepository recipeRatingRepository, UserService userService,
                          FoodItemRepository foodItemRepository, PersonalRecipeRepository personalRecipeRepository,
-                         DislikedItemRepository dislikedItemRepository) {
+                         DislikedItemRepository dislikedItemRepository,
+                         FavoriteRecipeRepository favoriteRecipeRepository) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
         this.recipeRatingRepository = recipeRatingRepository;
@@ -80,6 +82,69 @@ public class RecipeService {
         this.foodItemRepository = foodItemRepository;
         this.personalRecipeRepository = personalRecipeRepository;
         this.dislikedItemRepository = dislikedItemRepository;
+        this.favoriteRecipeRepository = favoriteRecipeRepository;
+    }
+
+    /**
+     * Used to allow users to mark Recipes as favorites for easy access.
+     * @param jwt: The users JWT
+     * @param recipeId: Id of the recipe the user wants to favorite
+     * @return A response entity indicating the status of the operation.
+     * */
+    public ResponseEntity<?> addFavoriteRecipe(String jwt, Long recipeId) {
+        Optional<User> userOpt = userService.getUserFromJwtToken(jwt);
+        if (userOpt.isPresent()) {
+            Optional<Recipe> recipeOpt = recipeRepository.findById(recipeId);
+            if (recipeOpt.isPresent()){
+                FavoriteRecipe favoriteRecipe = new FavoriteRecipeBuilder()
+                        .user(userOpt.get()).recipe(recipeOpt.get()).build();
+                favoriteRecipeRepository.save(favoriteRecipe);
+                return new ResponseEntity<>("Favorite saved", HttpStatus.OK);
+            }
+            return new ResponseEntity<>("Recipe not Found", HttpStatus.NOT_FOUND);
+        }
+        return new ResponseEntity<>("User not Found", HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Used to remove a favorited item for a user.
+     * @param jwt: User JWT
+     * @param recipeId: id of the recipe to be removed
+     * @return ResponseEntity indicating the status of the operation.
+     * */
+    public ResponseEntity<?> removeFavoriteRecipe(String jwt, Long recipeId){
+        Optional<User> userOpt = userService.getUserFromJwtToken(jwt);
+        if (userOpt.isPresent()) {
+            Optional<List<FavoriteRecipe>> favoriteRecipes = favoriteRecipeRepository.findByUser(userOpt.get());
+            if (favoriteRecipes.isPresent()){
+                for (FavoriteRecipe favoriteRecipe : favoriteRecipes.get()){
+                    if (favoriteRecipe.getRecipe().getId() == recipeId) {
+                        favoriteRecipeRepository.delete(favoriteRecipe);
+                        return new ResponseEntity<>("Removal Successful", HttpStatus.OK);
+                    }
+                }
+                return new ResponseEntity<>("Recipe to remove was not found", HttpStatus.NOT_FOUND);
+            }
+            return new ResponseEntity<>("No Recipes to Remove", HttpStatus.OK);
+        }
+        return new ResponseEntity<>("User not Found", HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Used to retrieve a users favorited recipes.
+     * @param jwt: User JWT
+     * @return ResponseEntity indicating the status of the operation.
+     * */
+    public ResponseEntity<?> getFavoriteRecipe(String jwt){
+        Optional<User> userOpt = userService.getUserFromJwtToken(jwt);
+        if (userOpt.isPresent()) {
+            Optional<List<FavoriteRecipe>> favoriteRecipes = favoriteRecipeRepository.findByUser(userOpt.get());
+            if (favoriteRecipes.isPresent()){
+                return new ResponseEntity<>(favoriteRecipes.get(), HttpStatus.OK);
+            }
+            return new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK);
+        }
+        return new ResponseEntity<>("User not Found", HttpStatus.NOT_FOUND);
     }
 
     /**
