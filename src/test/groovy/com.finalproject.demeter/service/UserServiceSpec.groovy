@@ -13,6 +13,7 @@ import com.finalproject.demeter.repository.FoodItemRepository
 import com.finalproject.demeter.repository.InventoryRepository
 import com.finalproject.demeter.repository.MinorItemRepository
 import com.finalproject.demeter.repository.PasswordTokenRepository
+import com.finalproject.demeter.repository.UserPreferenceRepository
 import com.finalproject.demeter.repository.UserRepository
 import com.finalproject.demeter.util.DislikedItemBuilder
 import com.finalproject.demeter.util.FoodItemBuilder
@@ -38,6 +39,7 @@ class UserServiceSpec extends Specification {
     MinorItemRepository minorItemRepository = Mock()
     JwtUtil jwtUtil = Mock()
     DislikedItemRepository dislikedItemRepository = Mock()
+    UserPreferenceRepository userPreferenceRepository = Mock()
     UserService userService
     User user = new User()
     String userJWT = "randomRealWorkingJWT"
@@ -53,7 +55,7 @@ class UserServiceSpec extends Specification {
 
     void setup(){
         userService = new UserService(userRepository, passwordEncoder, passwordTokenRepository, foodItemRepository,
-                inventoryRepository, minorItemRepository, jwtUtil, dislikedItemRepository)
+                inventoryRepository, minorItemRepository, jwtUtil, dislikedItemRepository, userPreferenceRepository)
         user.username = "jSmith"
         user.password = "testingPassword1!"
         user.firstName = "John"

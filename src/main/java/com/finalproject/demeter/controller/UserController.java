@@ -23,4 +23,9 @@ public class UserController {
                                         @RequestBody NameUpdate nameUpdate) {
         return userService.updateName(jwt, nameUpdate.getNewName(), nameUpdate.getNameIndicator());
     }
+
+    @PostMapping("/getUserPreferences")
+    public ResponseEntity<?> getUserPreferences(@RequestHeader("AUTHORIZATION") String jwt) {
+        return userService.getUserPreferences(jwt);
+    }
 }
