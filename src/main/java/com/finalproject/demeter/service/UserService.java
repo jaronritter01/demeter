@@ -58,6 +58,44 @@ public class UserService implements UserDetailsService {
     }
 
     /**
+     * Used to update a user's name.
+     * @param jwt: User jwt
+     * @param newName: Name the user wants to update to.
+     * @param firstOrLast: Indication of if the first or last name needs updated.
+     * @return ResponseEntity representing the status of the operation.
+     * */
+    public ResponseEntity<?> updateName(String jwt, String newName, String firstOrLast){
+        Optional<User> userOpt = getUserFromJwtToken(jwt);
+        if (userOpt.isPresent()){
+            // input validation
+            if (AuthUtil.isValidName(newName)) {
+                User user = userOpt.get();
+                if (firstOrLast.equalsIgnoreCase("first")) {
+                    user.setFirstName(newName);
+                } else if (firstOrLast.equalsIgnoreCase("last")){
+                    user.setLastName(newName);
+                }
+                else {
+                    return new ResponseEntity<>("Invalid name identifier", HttpStatus.BAD_REQUEST);
+                }
+                userRepository.save(user);
+                return new ResponseEntity<>("Name was updated", HttpStatus.OK);
+            }
+            return new ResponseEntity<>("Not a valid name", HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<>("User could not be found", HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Used to get a user by their username.
+     * @param username: the username for a user.
+     * @return an Optional with the user in it.
+     * */
+    public Optional<User> findByUsername(String username){
+        return userRepository.findByUsername(username);
+    }
+
+    /**
      * This is used to add a user preference to the db. i.e. allergy, disliked item, or foods they cannot eat.
      * @param jwt: user JWT
      * @param foodItemId: id of the food item that needs to be saved

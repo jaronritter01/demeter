@@ -4,6 +4,7 @@ import com.finalproject.demeter.dao.User;
 import com.finalproject.demeter.dto.LoginDto;
 import com.finalproject.demeter.dto.PasswordUpdate;
 import com.finalproject.demeter.dto.SignUpDto;
+import com.finalproject.demeter.dto.UserLoginInfo;
 import com.finalproject.demeter.service.MailService;
 import com.finalproject.demeter.service.UserService;
 import com.finalproject.demeter.util.AuthUtil;
@@ -65,7 +66,6 @@ public class AuthController {
         return new ResponseEntity("Message Sent if User exists", HttpStatus.OK);
     }
 
-    // TODO: Need to write test for this
     @PostMapping("/updatePassword")
     public ResponseEntity<Void> updatePassword(@RequestBody PasswordUpdate passwordUpdate){
         if (!userService.isTokenValid(passwordUpdate.getToken())){
@@ -97,7 +97,7 @@ public class AuthController {
     }
 
     @PostMapping("/signin")
-    public ResponseEntity<String> authenticateUser(@RequestBody LoginDto loginDto){
+    public ResponseEntity<?> authenticateUser(@RequestBody LoginDto loginDto){
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginDto.getUsername(),
@@ -106,12 +106,23 @@ public class AuthController {
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
         // Get the user
-        UserDetails user = userService.loadUserByUsername(loginDto.getUsername());
+        UserDetails userDetails = userService.loadUserByUsername(loginDto.getUsername());
+        Optional<User> userOpt = userService.findByUsername(loginDto.getUsername());
         // Generate jwtToken
-        String jwtToken = jwtUtils.generateToken(user);
-        StringBuilder jwtReturnToken = new StringBuilder().append("Bearer:").append(jwtToken);
-        // Return Token to front end
-        return new ResponseEntity<>(jwtReturnToken.toString(), HttpStatus.OK);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            String jwtToken = jwtUtils.generateToken(userDetails);
+            String jwtReturnToken = new StringBuilder().append("Bearer:").append(jwtToken).toString();
+            // Return Token to front end
+            UserLoginInfo returnInfo = new UserLoginInfo();
+            returnInfo.setToken(jwtReturnToken);
+            returnInfo.setFirstName(user.getFirstName());
+            returnInfo.setLastName(user.getLastName());
+            returnInfo.setEmail(user.getEmail());
+            return new ResponseEntity<>(returnInfo, HttpStatus.OK);
+        }
+        // This in theory should never get hit
+        return new ResponseEntity<>("No User Found", HttpStatus.NOT_FOUND);
     }
 
     @PostMapping("/signup")

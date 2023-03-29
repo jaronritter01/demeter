@@ -51,8 +51,6 @@ class UserServiceSpec extends Specification {
     InventoryItem item2 = new InventoryItemBuilder().id(2L).userId(user).foodItem(foodItem2).unit("test2").quantity(10F).build()
     InventoryItem item3 = new InventoryItemBuilder().id(3L).userId(user).foodItem(foodItem3).unit("test3").quantity(10F).build()
 
-
-
     void setup(){
         userService = new UserService(userRepository, passwordEncoder, passwordTokenRepository, foodItemRepository,
                 inventoryRepository, minorItemRepository, jwtUtil, dislikedItemRepository)
@@ -61,6 +59,67 @@ class UserServiceSpec extends Specification {
         user.firstName = "John"
         user.lastName = "Smith"
         user.email = "johns@gmail.com"
+    }
+
+    def "When a valid name and indicator are passed, but the user cannot be found, the users name should not be updated" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.updateName(userJWT, "name", "first")
+
+        then:
+        re.statusCode == HttpStatus.NOT_FOUND
+        re.body == "User could not be found"
+        0 * userRepository.save(_)
+    }
+
+    def "When a valid user and indicator are passed, but the name is not valid, the users name should not be updated" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+
+        when:
+        ResponseEntity<?> re = userService.updateName(userJWT, "Name()That^doesn't work<", "notlastorfirst")
+
+        then:
+        re.statusCode == HttpStatus.BAD_REQUEST
+        re.body == "Not a valid name"
+        0 * userRepository.save(_)
+    }
+
+    def "When a valid user, name, but a bad indicator is passed, the users name should not be updated" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+
+        when:
+        ResponseEntity<?> re = userService.updateName(userJWT, "fakename", "notlastorfirst")
+
+        then:
+        re.statusCode == HttpStatus.BAD_REQUEST
+        re.body == "Invalid name identifier"
+        0 * userRepository.save(_)
+    }
+
+    def "When a valid user, name, and indicator are passed, the users name should be updated" (String name, String indicator) {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+
+        when:
+        ResponseEntity<?> re = userService.updateName(userJWT, name, indicator)
+
+        then:
+        re.statusCode == HttpStatus.OK
+        re.body == "Name was updated"
+        1 * userRepository.save(_)
+
+        where:
+        name       | indicator
+        "fakename" | "first"
+        "FakeName" | "last"
     }
 
     def "When a valid user is passed and item id, the disliked item should be removed" () {
