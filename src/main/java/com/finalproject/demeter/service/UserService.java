@@ -59,7 +59,17 @@ public class UserService implements UserDetailsService {
         this.userPreferenceRepository = userPreferenceRepository;
     }
 
+    /**
+     * Used to modify a user's preferences.
+     * @param jwt: User JWT
+     * @param fieldToSet: Which field on the user preference the needs to be changed
+     * @return Response Entity Indicating the status of the operation.
+     * */
     public ResponseEntity<?> setUserPreferences(String jwt, String fieldToSet) {
+        if (fieldToSet == null) {
+            return new ResponseEntity<>("Not a valid field", HttpStatus.BAD_REQUEST);
+        }
+
         final String unit = "unit";
         Optional<User> userOpt = getUserFromJwtToken(jwt);
 
@@ -281,6 +291,9 @@ public class UserService implements UserDetailsService {
         // Hash password
         user.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
         userRepository.save(user);
+        // Create a user Preference Object on sign up
+        UserPreference userPreference = new UserPreferencesBuilder().user(user).isMetric(true).build();
+        userPreferenceRepository.save(userPreference);
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.finalproject.demeter.controller;
 
 import com.finalproject.demeter.dto.NameUpdate;
+import com.finalproject.demeter.dto.PreferenceUpdate;
 import com.finalproject.demeter.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -27,5 +28,11 @@ public class UserController {
     @PostMapping("/getUserPreferences")
     public ResponseEntity<?> getUserPreferences(@RequestHeader("AUTHORIZATION") String jwt) {
         return userService.getUserPreferences(jwt);
+    }
+
+    @PostMapping("/setUserPreferences")
+    public ResponseEntity<?> setUserPreferences(@RequestHeader("AUTHORIZATION") String jwt,
+                                                @RequestBody PreferenceUpdate preferenceUpdate) {
+        return userService.setUserPreferences(jwt, preferenceUpdate.getFieldToUpdate());
     }
 }
