@@ -125,7 +125,7 @@ class UserServiceSpec extends Specification {
         1 * userPreferenceRepository.save(_)
     }
 
-    def "When a valid user requests their preferences, they should be returned" () {
+    def "When an invalid user requests their preferences, an error should be returned" () {
         given:
         jwtUtil.extractEmail(_) >> ""
         userRepository.findByEmail(_) >> Optional.empty()

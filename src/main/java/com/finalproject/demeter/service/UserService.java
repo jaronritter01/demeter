@@ -5,7 +5,6 @@ import com.finalproject.demeter.dto.SignUpDto;
 import com.finalproject.demeter.dto.UpdateInventory;
 import com.finalproject.demeter.repository.*;
 import com.finalproject.demeter.util.*;
-import org.apache.coyote.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +17,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import javax.swing.text.html.Option;
 import java.util.*;
 
 @Service
