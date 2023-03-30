@@ -4,10 +4,7 @@ import com.finalproject.demeter.dao.*;
 import com.finalproject.demeter.dto.SignUpDto;
 import com.finalproject.demeter.dto.UpdateInventory;
 import com.finalproject.demeter.repository.*;
-import com.finalproject.demeter.util.AuthUtil;
-import com.finalproject.demeter.util.DislikedItemBuilder;
-import com.finalproject.demeter.util.JwtUtil;
-import com.finalproject.demeter.util.MinorItemBuilder;
+import com.finalproject.demeter.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +29,7 @@ public class UserService implements UserDetailsService {
     private InventoryRepository inventoryRepository;
     private MinorItemRepository minorItemRepository;
     private DislikedItemRepository dislikedItemRepository;
+    private UserPreferenceRepository userPreferenceRepository;
     private Logger LOGGER = LoggerFactory.getLogger(UserService.class);
 
     private final Set<SimpleGrantedAuthority> authorities = new HashSet<>(){{
@@ -46,7 +44,8 @@ public class UserService implements UserDetailsService {
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        PasswordTokenRepository passwordTokenRepository, FoodItemRepository foodItemRepository,
                        InventoryRepository inventoryRepository, MinorItemRepository minorItemRepository,
-                       JwtUtil jwtUtil, DislikedItemRepository dislikedItemRepository){
+                       JwtUtil jwtUtil, DislikedItemRepository dislikedItemRepository,
+                       UserPreferenceRepository userPreferenceRepository){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordTokenRepository = passwordTokenRepository;
@@ -55,6 +54,64 @@ public class UserService implements UserDetailsService {
         this.minorItemRepository = minorItemRepository;
         this.jwtUtil = jwtUtil;
         this.dislikedItemRepository = dislikedItemRepository;
+        this.userPreferenceRepository = userPreferenceRepository;
+    }
+
+    /**
+     * Used to modify a user's preferences.
+     * @param jwt: User JWT
+     * @param fieldToSet: Which field on the user preference the needs to be changed
+     * @return Response Entity Indicating the status of the operation.
+     * */
+    public ResponseEntity<?> setUserPreferences(String jwt, String fieldToSet) {
+        if (fieldToSet == null) {
+            return new ResponseEntity<>("Not a valid field", HttpStatus.BAD_REQUEST);
+        }
+
+        final String unit = "unit";
+        Optional<User> userOpt = getUserFromJwtToken(jwt);
+
+        if (userOpt.isEmpty()){
+            return new ResponseEntity<>("User was not found", HttpStatus.NOT_FOUND);
+        }
+
+        User user = userOpt.get();
+        Optional<UserPreference> userPreferenceOpt = userPreferenceRepository.findByUser(user);
+
+        if (userPreferenceOpt.isEmpty()) {
+            // Default User Preferences
+            UserPreference userPreference = new UserPreferencesBuilder().user(user).isMetric(true).build();
+            userPreferenceRepository.save(userPreference);
+            return new ResponseEntity<>("User preferences were created", HttpStatus.OK);
+        }
+
+        UserPreference userPreference = userPreferenceOpt.get();
+        // This is a switch statement in case we add more preferences later
+        return switch (fieldToSet) {
+            case unit -> {
+                userPreference.setMetric(!userPreference.isMetric());
+                userPreferenceRepository.save(userPreference);
+                yield new ResponseEntity<>("User Preferences Successfully saved", HttpStatus.OK);
+            }
+            default -> new ResponseEntity<>("Not a valid field", HttpStatus.BAD_REQUEST);
+        };
+    }
+
+    /**
+     * Used to get a users preferences;
+     * @param jwt: User JWT
+     * @return A Response Entity based on the status of the operation.
+     * */
+    public ResponseEntity<?> getUserPreferences(String jwt) {
+        Optional<User> userOpt = getUserFromJwtToken(jwt);
+        if (userOpt.isPresent()) {
+            Optional<UserPreference> userPreferenceOpt = userPreferenceRepository.findByUser(userOpt.get());
+            if (userPreferenceOpt.isEmpty()) {
+                return new ResponseEntity<>(new UserPreference(), HttpStatus.OK);
+            }
+            return new ResponseEntity<>(userPreferenceOpt.get(), HttpStatus.OK);
+        }
+        return new ResponseEntity<>("User was not found.", HttpStatus.NOT_FOUND);
     }
 
     /**
@@ -232,6 +289,9 @@ public class UserService implements UserDetailsService {
         // Hash password
         user.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
         userRepository.save(user);
+        // Create a user Preference Object on sign up
+        UserPreference userPreference = new UserPreferencesBuilder().user(user).isMetric(true).build();
+        userPreferenceRepository.save(userPreference);
     }
 
     /**

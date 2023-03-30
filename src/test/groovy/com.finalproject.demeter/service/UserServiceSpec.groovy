@@ -6,6 +6,7 @@ import com.finalproject.demeter.dao.InventoryItem
 import com.finalproject.demeter.dao.MinorItem
 import com.finalproject.demeter.dao.PasswordResetToken
 import com.finalproject.demeter.dao.User
+import com.finalproject.demeter.dao.UserPreference
 import com.finalproject.demeter.dto.SignUpDto
 import com.finalproject.demeter.dto.UpdateInventory
 import com.finalproject.demeter.repository.DislikedItemRepository
@@ -13,12 +14,14 @@ import com.finalproject.demeter.repository.FoodItemRepository
 import com.finalproject.demeter.repository.InventoryRepository
 import com.finalproject.demeter.repository.MinorItemRepository
 import com.finalproject.demeter.repository.PasswordTokenRepository
+import com.finalproject.demeter.repository.UserPreferenceRepository
 import com.finalproject.demeter.repository.UserRepository
 import com.finalproject.demeter.util.DislikedItemBuilder
 import com.finalproject.demeter.util.FoodItemBuilder
 import com.finalproject.demeter.util.InventoryItemBuilder
 import com.finalproject.demeter.util.JwtUtil
 import com.finalproject.demeter.util.MinorItemBuilder
+import com.finalproject.demeter.util.UserPreferencesBuilder
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.userdetails.UserDetails
@@ -38,6 +41,7 @@ class UserServiceSpec extends Specification {
     MinorItemRepository minorItemRepository = Mock()
     JwtUtil jwtUtil = Mock()
     DislikedItemRepository dislikedItemRepository = Mock()
+    UserPreferenceRepository userPreferenceRepository = Mock()
     UserService userService
     User user = new User()
     String userJWT = "randomRealWorkingJWT"
@@ -50,15 +54,116 @@ class UserServiceSpec extends Specification {
     InventoryItem item1 = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItem1).unit("test1").quantity(10F).build()
     InventoryItem item2 = new InventoryItemBuilder().id(2L).userId(user).foodItem(foodItem2).unit("test2").quantity(10F).build()
     InventoryItem item3 = new InventoryItemBuilder().id(3L).userId(user).foodItem(foodItem3).unit("test3").quantity(10F).build()
+    UserPreference userPreference = new UserPreferencesBuilder().id(1L).user(user).isMetric(true).build()
 
     void setup(){
         userService = new UserService(userRepository, passwordEncoder, passwordTokenRepository, foodItemRepository,
-                inventoryRepository, minorItemRepository, jwtUtil, dislikedItemRepository)
+                inventoryRepository, minorItemRepository, jwtUtil, dislikedItemRepository, userPreferenceRepository)
         user.username = "jSmith"
         user.password = "testingPassword1!"
         user.firstName = "John"
         user.lastName = "Smith"
         user.email = "johns@gmail.com"
+    }
+
+    def "When a valid used requests to change null as the preference it should return an error" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        userPreferenceRepository.findByUser(user) >> Optional.of(userPreference)
+
+        when:
+        ResponseEntity<?> re = userService.setUserPreferences(userJWT, null)
+
+        then:
+        re.statusCode == HttpStatus.BAD_REQUEST
+        re.body == "Not a valid field"
+        0 * userPreferenceRepository.save(_)
+    }
+
+    def "When an invalid used requests to change a preference, an error should be returned" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.setUserPreferences(userJWT, "unit")
+
+        then:
+        re.statusCode == HttpStatus.NOT_FOUND
+        re.body == "User was not found"
+        0 * userPreferenceRepository.save(_)
+    }
+
+    def "When a valid used requests to change a valid preference, but no preference exists it should be created" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        userPreferenceRepository.findByUser(user) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.setUserPreferences(userJWT, "unit")
+
+        then:
+        re.statusCode == HttpStatus.OK
+        re.body == "User preferences were created"
+        1 * userPreferenceRepository.save(_)
+    }
+
+    def "When a valid used requests to change a valid preference, and their preference exists it should be changed" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        userPreferenceRepository.findByUser(user) >> Optional.of(userPreference)
+
+        when:
+        ResponseEntity<?> re = userService.setUserPreferences(userJWT, "unit")
+
+        then:
+        re.statusCode == HttpStatus.OK
+        re.body == "User Preferences Successfully saved"
+        1 * userPreferenceRepository.save(_)
+    }
+
+    def "When an invalid user requests their preferences, an error should be returned" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.getUserPreferences(userJWT)
+
+        then:
+        re.statusCode == HttpStatus.NOT_FOUND
+        re.body == "User was not found."
+    }
+
+    def "When a valid user requests their preferences but they have none, a default preference should be returned" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        userPreferenceRepository.findByUser(user) >> Optional.empty()
+
+        when:
+        ResponseEntity<?> re = userService.getUserPreferences(userJWT)
+
+        then:
+        re.statusCode == HttpStatus.OK
+        re.body == new UserPreference()
+    }
+
+    def "When a valid user requests their preferences, they should be returned" () {
+        given:
+        jwtUtil.extractEmail(_) >> ""
+        userRepository.findByEmail(_) >> Optional.of(user)
+        userPreferenceRepository.findByUser(user) >> Optional.of(userPreference)
+
+        when:
+        ResponseEntity<?> re = userService.getUserPreferences(userJWT)
+
+        then:
+        re.statusCode == HttpStatus.OK
+        re.body == userPreference
     }
 
     def "When a valid name and indicator are passed, but the user cannot be found, the users name should not be updated" () {
