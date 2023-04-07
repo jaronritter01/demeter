@@ -58,6 +58,24 @@ public class UserService implements UserDetailsService {
     }
 
     /**
+     * Used to retrieve the items a user has labeled as minor.
+     * @param jwt: User JWT
+     * @return A ResponseEntity representing the status of the operation.
+     * */
+    public ResponseEntity<?> getMinorItems(String jwt){
+        Optional<User> userOpt = getUserFromJwtToken(jwt);
+        if (userOpt.isEmpty()) {
+            return new ResponseEntity<>("User not Found", HttpStatus.UNAUTHORIZED);
+        }
+
+        List<MinorItem> minorItems = minorItemRepository.findMinorItemsByUser(userOpt.get());
+        if (minorItems.size() == 0){
+            return new ResponseEntity<>("No records were found", HttpStatus.OK);
+        }
+        return new ResponseEntity<>(minorItems, HttpStatus.OK);
+    }
+
+    /**
      * Used to modify a user's preferences.
      * @param jwt: User JWT
      * @param fieldToSet: Which field on the user preference the needs to be changed
@@ -382,10 +400,10 @@ public class UserService implements UserDetailsService {
             }, () -> {
                 throw new RuntimeException("User not found");
             });
-            return new ResponseEntity("Item Updated", HttpStatus.OK);
+            return new ResponseEntity<>("Item Updated", HttpStatus.OK);
         } catch (Exception e) {
             LOGGER.error("Save Error: " + e.getMessage());
-            return new ResponseEntity("Error Saving Item", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Error Saving Item", HttpStatus.BAD_REQUEST);
         }
     }
 

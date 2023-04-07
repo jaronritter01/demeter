@@ -31,6 +31,7 @@ public class RecipeService {
     private PersonalRecipeRepository personalRecipeRepository;
     private UserService userService;
     private DislikedItemRepository dislikedItemRepository;
+    private MinorItemRepository minorItemRepository;
     private FavoriteRecipeRepository favoriteRecipeRepository;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
@@ -73,7 +74,7 @@ public class RecipeService {
     public RecipeService(RecipeRepository recipeRepository, RecipeItemRepository recipeItemRepository,
                          RecipeRatingRepository recipeRatingRepository, UserService userService,
                          FoodItemRepository foodItemRepository, PersonalRecipeRepository personalRecipeRepository,
-                         DislikedItemRepository dislikedItemRepository,
+                         DislikedItemRepository dislikedItemRepository, MinorItemRepository minorItemRepository,
                          FavoriteRecipeRepository favoriteRecipeRepository) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
@@ -82,6 +83,7 @@ public class RecipeService {
         this.foodItemRepository = foodItemRepository;
         this.personalRecipeRepository = personalRecipeRepository;
         this.dislikedItemRepository = dislikedItemRepository;
+        this.minorItemRepository = minorItemRepository;
         this.favoriteRecipeRepository = favoriteRecipeRepository;
     }
 
@@ -163,10 +165,12 @@ public class RecipeService {
         Optional<User> user = userService.getUserFromJwtToken(jwtToken);
         List<InventoryItem> userInventory = null;
         Optional<List<DislikedItem>> userPreferences = Optional.empty();
+        Optional<List<MinorItem>> userMinorItems = Optional.empty();
 
         if (user.isPresent()) {
             userInventory = userService.getInventory(user.get());
             userPreferences = dislikedItemRepository.findByUser(user.get());
+            userMinorItems = Optional.ofNullable(minorItemRepository.findMinorItemsByUser(user.get()));
         }
 
         if (userInventory != null) {
@@ -175,7 +179,7 @@ public class RecipeService {
                 Optional<List<RecipeItem>> recipeItems = recipeItemRepository.findRecipeItemsByRecipe(recipe);
                 if (recipeItems.isPresent()) {
                     // check to see what recipes can be made
-                    if (canRecipeBeMade(userInventory, recipeItems.get(), userPreferences)) {
+                    if (canRecipeBeMade(userInventory, recipeItems.get(), userPreferences, userMinorItems)) {
                         returnList.add(recipe);
                     }
                 }
@@ -334,7 +338,8 @@ public class RecipeService {
      * @return A boolean representing if a recipe can be made with the current ingredients a user has.
      * */
     private boolean canRecipeBeMade(List<InventoryItem> userInventory, List<RecipeItem> recipeItems,
-                                    Optional<List<DislikedItem>> userPreferences) {
+                                    Optional<List<DislikedItem>> userPreferences,
+                                    Optional<List<MinorItem>> minorItems) {
         if (recipeItems.size() == 0) {
             return false;
         }
@@ -364,11 +369,28 @@ public class RecipeService {
             }
 
             if (!found) {
-                return false;
+                // If the user has no minor items
+                if (minorItems.isEmpty()) {
+                    return false;
+                }
+
+                // if the user does not have this item labeled as minor
+                if (!isAMinorItem(recipeItem.getFoodItem(), minorItems.get())) {
+                    return false;
+                }
             }
         }
 
         return true;
+    }
+
+    private boolean isAMinorItem(FoodItem foodItem, List<MinorItem> minorItems) {
+        for (MinorItem minorItem : minorItems) {
+            if (foodItem.getId() == minorItem.getFoodItem().getId()){
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isNotDislikedItem(FoodItem foodItem, List<DislikedItem> dislikedItems) {
