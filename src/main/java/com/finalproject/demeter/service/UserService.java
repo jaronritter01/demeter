@@ -69,7 +69,6 @@ public class UserService implements UserDetailsService {
         }
 
         List<MinorItem> minorItems = minorItemRepository.findMinorItemsByUser(userOpt.get());
-        System.out.println(minorItems);
         if (minorItems.size() == 0){
             return new ResponseEntity<>("No records were found", HttpStatus.OK);
         }
@@ -383,7 +382,6 @@ public class UserService implements UserDetailsService {
                 Optional<FoodItem> foodItem = foodItemRepository.findById(itemId);
                 if (foodItem.isPresent()) {
                     MinorItem newItem = new MinorItemBuilder().user(user).foodItem(foodItem.get()).build();
-                    System.out.println(newItem);
                     if (mark.equalsIgnoreCase("add")) {
                         minorItemRepository.save(newItem);
                     } else if (mark.equalsIgnoreCase("remove")) {
