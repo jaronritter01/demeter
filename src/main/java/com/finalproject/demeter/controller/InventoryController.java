@@ -33,6 +33,11 @@ public class InventoryController {
         this.foodService = foodService;
     }
 
+    @PostMapping("/getMinorItems")
+    public ResponseEntity<?> getMinorItems(@RequestHeader("AUTHORIZATION") String jwt) {
+        return userService.getMinorItems(jwt);
+    }
+
     @PostMapping("/markItem")
     public ResponseEntity<String> markMinorItem(
             @RequestHeader("AUTHORIZATION") String jwt, @RequestBody FoodMark item) {
