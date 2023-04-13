@@ -98,6 +98,7 @@ public class InventoryController {
     ResponseEntity<?> getDislikedItems(@RequestHeader("AUTHORIZATION") String jwt) {
         return userService.getDislikedItems(jwt);
     }
+
     /**
      * The function is an endpoint to find the substitution foodItems for a foodItem.
      * @param jwt - authentication/username
