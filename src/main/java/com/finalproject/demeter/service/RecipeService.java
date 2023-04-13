@@ -183,7 +183,9 @@ public class RecipeService {
                 Optional<List<RecipeItem>> recipeItems = recipeItemRepository.findRecipeItemsByRecipe(recipe);
                 if (recipeItems.isPresent()) {
                     // check to see what recipes can be made or item subbed
-                    if (canRecipeBeMade(userInventory, recipeItems.get(), userPreferences, userMinorItems, user.get(), recipeWithSub)) {
+                    if (canRecipeBeMade(userInventory, recipeItems.get(), userPreferences, userMinorItems, user.get(),
+                            recipeWithSub)) {
+                        setRecipeRatings(recipe);
                         recipeWithSub.setRecipe(recipe);
                         returnList.add(recipeWithSub);
                     }
