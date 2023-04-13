@@ -13,6 +13,7 @@ import com.finalproject.demeter.dao.User
 import com.finalproject.demeter.dto.PersonalRecipeItem
 import com.finalproject.demeter.dto.RecipeQuery
 import com.finalproject.demeter.dto.RecipeUpload
+import com.finalproject.demeter.dto.RecipeWithSub
 import com.finalproject.demeter.dto.UpdateRecipeReview
 import com.finalproject.demeter.repository.DislikedItemRepository
 import com.finalproject.demeter.repository.FavoriteRecipeRepository
@@ -46,9 +47,10 @@ class RecipeServiceSpec extends Specification{
     DislikedItemRepository dislikedItemRepository = Mock()
     FavoriteRecipeRepository favoriteRecipeRepository = Mock()
     MinorItemRepository minorItemRepository = Mock()
+    FoodService foodService = Mock()
     RecipeService recipeService = new RecipeService(recipeRepository, recipeItemRepository, recipeRatingRepository,
             userService, foodItemRepository, personalRecipeRepository, dislikedItemRepository, minorItemRepository,
-            favoriteRecipeRepository)
+            favoriteRecipeRepository, foodService)
     User user = new User()
     FoodItem foodItemOne = null
     FoodItem foodItemTwo = null
@@ -392,7 +394,7 @@ class RecipeServiceSpec extends Specification{
         )
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
 
         then:
         canBeMade
@@ -422,7 +424,7 @@ class RecipeServiceSpec extends Specification{
         )
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
 
         then:
         canBeMade
@@ -449,7 +451,7 @@ class RecipeServiceSpec extends Specification{
         Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
 
         then:
         !canBeMade
@@ -476,7 +478,7 @@ class RecipeServiceSpec extends Specification{
         Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
 
         then:
         canBeMade
@@ -502,7 +504,7 @@ class RecipeServiceSpec extends Specification{
         Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
 
         then:
         canBeMade
@@ -528,7 +530,7 @@ class RecipeServiceSpec extends Specification{
         Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
 
         then:
         canBeMade
@@ -554,7 +556,7 @@ class RecipeServiceSpec extends Specification{
         Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
 
         then:
         !canBeMade
@@ -580,7 +582,7 @@ class RecipeServiceSpec extends Specification{
         Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
 
         when:
-        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt)
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
 
         then:
         !canBeMade
@@ -648,5 +650,69 @@ class RecipeServiceSpec extends Specification{
         then:
         1 * recipeRatingRepository.findById(1001) >> Optional.of(recipeReview)
         response.getStatusCode() == HttpStatus.BAD_REQUEST && response.body == "Stars could not be set"
+    }
+
+    def "When a user does not have the right ingredients for a recipe, but has a sub true should be returned" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+        Optional<List<DislikedItem>> userPreferences = Optional.empty()
+        List<FoodItem> foodItemList = new ArrayList<FoodItem>();
+        foodItemList.add(foodItemTwo);
+        foodService.getSubItems(user, 1) >> foodItemList
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemTwo)
+                .quantity(10F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+
+        and:
+        Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
+
+        then:
+        canBeMade
+    }
+
+    def "When a user does not have the right ingredients for a recipe, but has more than 1 subbed items" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+        Optional<List<DislikedItem>> userPreferences = Optional.empty()
+        List<FoodItem> foodItemList = new ArrayList<FoodItem>();
+        foodItemList.add(foodItemTwo);
+        foodService.getSubItems(user, 1) >> foodItemList
+        foodService.getSubItems(user, 2) >> foodItemList
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        RecipeItem recipeItemTwo = new RecipeItemBuilder().id(1L).foodItem(foodItemTwo).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        FoodItem foodItemThree = new FoodItemBuilder().id(3L).name("item3")
+                .description("item 3 description").reusable(false).picUrl("randomUrl").build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemThree)
+                .quantity(10F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+        recipeItems.add(recipeItemTwo)
+
+        and:
+        Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
+
+        then:
+        !canBeMade
     }
 }

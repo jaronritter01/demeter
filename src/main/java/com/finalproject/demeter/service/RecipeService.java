@@ -33,6 +33,7 @@ public class RecipeService {
     private DislikedItemRepository dislikedItemRepository;
     private MinorItemRepository minorItemRepository;
     private FavoriteRecipeRepository favoriteRecipeRepository;
+    private FoodService foodService;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
     private static final PaginationSetting DEFAULT_PAGE = new PaginationSettingBuilder()
@@ -75,7 +76,7 @@ public class RecipeService {
                          RecipeRatingRepository recipeRatingRepository, UserService userService,
                          FoodItemRepository foodItemRepository, PersonalRecipeRepository personalRecipeRepository,
                          DislikedItemRepository dislikedItemRepository, MinorItemRepository minorItemRepository,
-                         FavoriteRecipeRepository favoriteRecipeRepository) {
+                         FavoriteRecipeRepository favoriteRecipeRepository, FoodService foodService) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
         this.recipeRatingRepository = recipeRatingRepository;
@@ -85,6 +86,7 @@ public class RecipeService {
         this.dislikedItemRepository = dislikedItemRepository;
         this.minorItemRepository = minorItemRepository;
         this.favoriteRecipeRepository = favoriteRecipeRepository;
+        this.foodService = foodService;
     }
 
     /**
@@ -155,7 +157,7 @@ public class RecipeService {
      * @param pageSettings: The pagination setting for the given request
      * @return A list of reicpes that can be made user's given inventory.
      * */
-    public List<Recipe> getRecipeWithInventory(String jwtToken, PaginationSetting pageSettings) {
+    public List<RecipeWithSub> getRecipeWithInventory(String jwtToken, PaginationSetting pageSettings) {
         // This will likely need to be optimized.
         if (pageSettings.getPageSize() <= 0 || pageSettings.getPageNumber() < 0) {
             return new ArrayList<>();
@@ -174,13 +176,18 @@ public class RecipeService {
         }
 
         if (userInventory != null) {
-            List<Recipe> returnList = new ArrayList<>();
+            List<RecipeWithSub> returnList = new ArrayList<>();
+            RecipeWithSub recipeWithSub;
             for (Recipe recipe : recipeList) {
+                recipeWithSub = new RecipeWithSub();
                 Optional<List<RecipeItem>> recipeItems = recipeItemRepository.findRecipeItemsByRecipe(recipe);
                 if (recipeItems.isPresent()) {
-                    // check to see what recipes can be made
-                    if (canRecipeBeMade(userInventory, recipeItems.get(), userPreferences, userMinorItems)) {
-                        returnList.add(recipe);
+                    // check to see what recipes can be made or item subbed
+                    if (canRecipeBeMade(userInventory, recipeItems.get(), userPreferences, userMinorItems, user.get(),
+                            recipeWithSub)) {
+                        setRecipeRatings(recipe);
+                        recipeWithSub.setRecipe(recipe);
+                        returnList.add(recipeWithSub);
                     }
                 }
             }
@@ -196,7 +203,6 @@ public class RecipeService {
             if (endIndex > returnList.size()) {
                 endIndex = returnList.size();
             }
-
             return returnList.subList(startIndex, endIndex);
         }
 
@@ -339,10 +345,13 @@ public class RecipeService {
      * */
     private boolean canRecipeBeMade(List<InventoryItem> userInventory, List<RecipeItem> recipeItems,
                                     Optional<List<DislikedItem>> userPreferences,
-                                    Optional<List<MinorItem>> minorItems) {
+                                    Optional<List<MinorItem>> minorItems,
+                                    User user, RecipeWithSub recipeWithSub) {
         if (recipeItems.size() == 0) {
             return false;
         }
+
+        boolean containsSubItem = false;
         for (RecipeItem recipeItem : recipeItems) {
             long currentFoodItemId = recipeItem.getFoodItem().getId();
             Float recipeQuantity = recipeItem.getQuantity();
@@ -362,6 +371,20 @@ public class RecipeService {
                     }
                     // If they do not
                     else {
+                        found = true;
+                        break;
+                    }
+                // check if a sub item already exists for the recipe or if the item is a minor item
+                } else if (!containsSubItem &&
+                        (minorItems.isEmpty() || !isAMinorItem(recipeItem.getFoodItem(), minorItems.get()))) {
+                    // if there are no other sub items and this item is not minor
+                    Optional<List<FoodItem>> foodItemList = Optional.ofNullable(foodService.getSubItems(user, currentFoodItemId));
+                    if (foodItemList.isPresent() && foodItemList.get().size() > 0) {
+                        // mark item as subbed and add isSubbed to recipe
+                        containsSubItem = true;
+                        recipeWithSub.setIsSubbed(true);
+                        recipeWithSub.setSubbedId(foodItemList.get().get(0).getId());
+                        recipeWithSub.setFoodIdToReplace(currentFoodItemId);
                         found = true;
                         break;
                     }

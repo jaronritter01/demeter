@@ -93,7 +93,7 @@ public class RecipeController {
     @PostMapping("/recipeWithInventory")
     public ResponseEntity<?> getRecipesWithInventory(@RequestHeader("AUTHORIZATION") String jwt,
                                                      @RequestBody PaginationSetting paginationSetting) {
-        List<Recipe> recipeList = recipeService.getRecipeWithInventory(jwt, paginationSetting);
+        List<RecipeWithSub> recipeList = recipeService.getRecipeWithInventory(jwt, paginationSetting);
         return new ResponseEntity(recipeList, HttpStatus.OK);
     }
 
