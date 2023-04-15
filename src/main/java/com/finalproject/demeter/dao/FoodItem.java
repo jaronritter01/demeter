@@ -13,7 +13,9 @@ public class FoodItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
     private String name;
+    @Column(length = 2048)
     private String description;
     private boolean reusable;
+    @Column(length = 2048)
     private String picUrl;
 }

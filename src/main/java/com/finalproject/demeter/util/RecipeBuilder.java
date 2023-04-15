@@ -35,6 +35,11 @@ public class RecipeBuilder {
         return this;
     }
 
+    public RecipeBuilder picId(String val) {
+        recipe.setPicId(val);
+        return this;
+    }
+
     public Recipe build() {
         return recipe;
     }

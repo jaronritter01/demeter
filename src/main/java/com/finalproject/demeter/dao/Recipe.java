@@ -20,4 +20,6 @@ public class Recipe {
     private Long reviewCount;
     @NotNull
     private Boolean isPublic;
+    @Column(length = 2048)
+    private String picId;
 }
