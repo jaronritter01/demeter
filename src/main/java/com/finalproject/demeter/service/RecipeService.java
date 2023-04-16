@@ -243,6 +243,7 @@ public class RecipeService {
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             List<PersonalRecipeItem> ingredientList = personalRecipe.getIngredients();
+            //TODO: Convert Recipe
             if (ingredientList.size() == 0){
                 return new ResponseEntity<>("No Ingredients were passed", HttpStatus.BAD_REQUEST);
             }
