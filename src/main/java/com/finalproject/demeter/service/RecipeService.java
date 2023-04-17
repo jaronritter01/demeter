@@ -1,5 +1,6 @@
 package com.finalproject.demeter.service;
 
+import com.finalproject.demeter.conversion.ConversionUtils;
 import com.finalproject.demeter.dao.*;
 import com.finalproject.demeter.dto.*;
 import com.finalproject.demeter.repository.*;
@@ -158,6 +159,8 @@ public class RecipeService {
      * @return A list of reicpes that can be made user's given inventory.
      * */
     public List<RecipeWithSub> getRecipeWithInventory(String jwtToken, PaginationSetting pageSettings) {
+        // TODO: Needs outbound conversion on
+        // Recipes and User inventory should already be internalized and standard
         // This will likely need to be optimized.
         if (pageSettings.getPageSize() <= 0 || pageSettings.getPageNumber() < 0) {
             return new ArrayList<>();
@@ -203,6 +206,7 @@ public class RecipeService {
             if (endIndex > returnList.size()) {
                 endIndex = returnList.size();
             }
+            // Conversion should likely happen here
             return returnList.subList(startIndex, endIndex);
         }
 
@@ -228,6 +232,7 @@ public class RecipeService {
         if (recipeList.size() == 0) {
             return new ResponseEntity<>("No Recipes Found", HttpStatus.OK);
         }
+        // TODO: Convert on return
         return new ResponseEntity<>(recipeList, HttpStatus.OK);
     }
 
@@ -243,7 +248,8 @@ public class RecipeService {
         if (userOpt.isPresent()) {
             User user = userOpt.get();
             List<PersonalRecipeItem> ingredientList = personalRecipe.getIngredients();
-            //TODO: Convert Recipe
+            // Conversion to standard units
+            ConversionUtils.convertPersonalRecipeItems(ingredientList);
             if (ingredientList.size() == 0){
                 return new ResponseEntity<>("No Ingredients were passed", HttpStatus.BAD_REQUEST);
             }
@@ -277,7 +283,7 @@ public class RecipeService {
 
             // If all the ingredients are present
             for (int i = 0; i < recipeItemList.size(); i++){
-                if (ingredientList.get(i).getQuantity() < 1) {
+                if (ingredientList.get(i).getQuantity() < 0) {
                     return new ResponseEntity<>("Invalid Recipe Quantity", HttpStatus.BAD_REQUEST);
                 }
                 // Create a recipe Item from the user input, created recipe, and found foodItem
@@ -348,6 +354,7 @@ public class RecipeService {
                                     Optional<List<DislikedItem>> userPreferences,
                                     Optional<List<MinorItem>> minorItems,
                                     User user, RecipeWithSub recipeWithSub) {
+        // TODO: Shouldn't need conversion
         if (recipeItems.size() == 0) {
             return false;
         }
@@ -442,6 +449,7 @@ public class RecipeService {
     }
 
     public List<Recipe> getAllRecipes(PaginationSetting pageSettings) {
+        // TODO: Possible conversion. Might just leave as returning standard units
         Pageable page = PageRequest.of(pageSettings.getPageNumber(), pageSettings.getPageSize());
         List<Recipe> returnList = new ArrayList<>();
         recipeRepository.findAllPublic(page).forEach(recipe -> {
@@ -453,6 +461,7 @@ public class RecipeService {
 
     // Needs testing
     public ResponseEntity<?> getRecipeItemsById(Long id) {
+        // TODO: Possible conversion. Might just leave as returning standard units
         Optional<Recipe> recipe = recipeRepository.findById(id);
         if (recipe.isPresent()){
             Optional<List<RecipeItem>> recipeItemList = recipeItemRepository.findRecipeItemsByRecipe(recipe.get());
@@ -524,6 +533,7 @@ public class RecipeService {
      * @return: a response entity representing the status of the operation
      * */
     public ResponseEntity<?> getQueriedRecipes(RecipeQuery query, PaginationSetting pageSettings) {
+        // TODO: Possible conversion. Might just leave as returning standard units
         QueryMethod method = queryMap.get(query.getMethod().toLowerCase());
         Pageable page = PageRequest.of(pageSettings.getPageNumber(), pageSettings.getPageSize());
 
@@ -612,6 +622,8 @@ public class RecipeService {
      * @return ResponseEntity with an error message or recipe review.
      */
     public ResponseEntity<?> getRecipeReview(long id) {
+        // TODO: Look into if this recipe is needed on return
+        // TODO: Possible conversion. Might just leave as returning standard units
         Optional<RecipeReview> recipeReview = recipeRatingRepository.findById(id);
         if (recipeReview.isPresent()){
             return new ResponseEntity<>(recipeReview, HttpStatus.OK);
@@ -625,6 +637,8 @@ public class RecipeService {
      * @return ResponseEntity with an error message or list of recipe review.
      */
     public ResponseEntity<?> getRecipeReviewByRecipeId(long id) {
+        // TODO: Look into if this recipe is needed on return
+        // TODO: Possible conversion. Might just leave as returning standard units
         Optional<List<RecipeReview>> recipeReviews = recipeRatingRepository.findByRecipeId(id);
         if (recipeReviews.isPresent()){
             for (RecipeReview review : recipeReviews.get()) {

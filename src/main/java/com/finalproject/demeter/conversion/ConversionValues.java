@@ -17,9 +17,25 @@ import static com.finalproject.demeter.units.VolumetricUnit.*;
 import static com.finalproject.demeter.units.WeightUnit.*;
 
 public class ConversionValues {
-    // TODO: Create the version of this that converts from standard to non-standard
-    private final static Map<Unit, Function<Float, Measurements>> conversionFromStandardMap = new HashMap<>();
-    
+    private final static Map<Unit, Function<Float, ConversionIntermediate>> conversionFromStandardMap = new HashMap<>() {{
+        // Length Conversions
+        put(IN, ConversionValues::meterToInches);
+        put(FT, ConversionValues::inchesToFoot);
+        put(YRD, ConversionValues::footToYard);
+        // Singular conversions
+        put(SLICE, ConversionValues::pieceToSlice);
+        // Temp Conversions
+        put(F, ConversionValues::celsiusToFahrenheit);
+        // Volume Conversions
+        put(TSP, ConversionValues::literToTeaspoon);
+        put(TBSP, ConversionValues::teaspoonToTablespoon);
+        put(CUP, ConversionValues::tablespoonToCup);
+        put(GAL, ConversionValues::cupToGallon);
+        // Weight conversions
+        put(OZ, ConversionValues::gramToOunce);
+        put(LB, ConversionValues::ounceToPound);
+    }};
+
     private final static Map<Unit, Function<Float, Measurements>> conversionToStandardMap = new HashMap<>() {{
         put(M, ConversionValues::meterToMeter);
         put(IN, ConversionValues::inchesToMeter);
@@ -62,6 +78,102 @@ public class ConversionValues {
             return null;
         }
     }
+
+    public static Function<Float, ConversionIntermediate> getConversionFromStandard(Unit unit) {
+        try {
+            return conversionFromStandardMap.get(unit);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    //START OUTBOUND MEASUREMENT CONVERSIONS
+
+    public static ConversionIntermediate meterToInches(Float quantity) {
+        Float convertedValue = Double.valueOf(quantity * 39.37).floatValue();
+        if (convertedValue > 24 ) {
+            return new ConversionIntermediateBuilder().quantity(convertedValue).unit(IN).build();
+        }
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(convertedValue).unit(FT).build();
+    }
+
+    public static ConversionIntermediate inchesToFoot(Float quantity) {
+        Float convertedValue = Double.valueOf(quantity / 12).floatValue();
+        if (convertedValue > 6 ) {
+            return new ConversionIntermediateBuilder().quantity(convertedValue).unit(FT).build();
+        }
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(convertedValue).unit(YRD).build();
+    }
+
+    public static ConversionIntermediate footToYard(Float quantity) {
+        Float convertedValue = Double.valueOf(quantity / 3).floatValue();
+        // This is a final unit, it cannot be converted further
+        return new ConversionIntermediateBuilder().quantity(convertedValue).unit(YRD).build();
+    }
+
+    public static ConversionIntermediate pieceToSlice(Float quantity) {
+        // This is a final unit, it cannot be converted further
+        return new ConversionIntermediateBuilder().quantity(quantity).unit(SLICE).build();
+    }
+
+    public static ConversionIntermediate celsiusToFahrenheit(Float quantity) {
+        Float conversionQuantity = Double.valueOf(quantity * (9.0/5) + 32).floatValue();
+        // This is a final unit, it cannot be converted further
+        return new ConversionIntermediateBuilder().quantity(quantity).unit(F).build();
+    }
+
+    public static ConversionIntermediate literToTeaspoon(Float quantity) {
+        Float conversionQuantity = Double.valueOf(quantity * 202.9).floatValue();
+        if (conversionQuantity < 6) {
+            return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(TSP).build();
+        }
+
+        return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(TBSP).build();
+    }
+
+    public static ConversionIntermediate teaspoonToTablespoon(Float quantity) {
+        Float conversionQuantity = Double.valueOf(quantity / 3).floatValue();
+        if (conversionQuantity < 6) {
+            return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(TBSP).build();
+        }
+
+        return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(CUP).build();
+    }
+
+    public static ConversionIntermediate tablespoonToCup(Float quantity) {
+        Float conversionQuantity = Double.valueOf(quantity / 16).floatValue();
+        if (conversionQuantity < 16) {
+            return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(CUP).build();
+        }
+
+        return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(GAL).build();
+    }
+
+    public static ConversionIntermediate cupToGallon(Float quantity) {
+        Float conversionQuantity = Double.valueOf(quantity / 16).floatValue();
+        // This is a final unit, it cannot be converted further
+        return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(GAL).build();
+    }
+
+    public static ConversionIntermediate gramToOunce(Float quantity) {
+        Float conversionQuantity = Double.valueOf(quantity / 28.35).floatValue();
+        if (conversionQuantity < 16) {
+            return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(OZ).build();
+        }
+
+        return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(LB).build();
+    }
+
+    public static ConversionIntermediate ounceToPound(Float quantity) {
+        Float conversionQuantity = Double.valueOf(quantity / 16).floatValue();
+        // This is a final unit, it cannot be converted further
+        return new ConversionIntermediateBuilder().quantity(conversionQuantity).unit(LB).build();
+    }
+
+    //START INBOUND MEASUREMENT CONVERSIONS
 
     public static Measurements meterToMeter(Float quantity) {
         return new MeasurementsBuilder().units("m").quantity(quantity).build();
