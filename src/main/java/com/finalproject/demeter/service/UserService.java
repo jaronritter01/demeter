@@ -261,9 +261,10 @@ public class UserService implements UserDetailsService {
      * @return UserDetails object for the found user
      * */
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
-        User user = userRepository.findByUsernameOrEmail(usernameOrEmail.toLowerCase(), usernameOrEmail.toLowerCase())
+        String finalUsernameOrEmail = usernameOrEmail.toLowerCase();
+        User user = userRepository.findByUsernameOrEmail(finalUsernameOrEmail, finalUsernameOrEmail)
                 .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found with username or email: "+ usernameOrEmail)
+                        new UsernameNotFoundException("User not found with username or email: "+ finalUsernameOrEmail)
                 );
 
         return new org.springframework.security.core.userdetails.User(user.getEmail(),
@@ -431,6 +432,11 @@ public class UserService implements UserDetailsService {
     public ResponseEntity<String> updateInventory(User user, UpdateInventory inventoryItem) {
         // TODO: Inbound conversion so inventory stays standard (Done)
         List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
+
+        if (inventoryItem.getUnit().equals("")) {
+            return new ResponseEntity<>("Invalid Unit", HttpStatus.BAD_REQUEST);
+        }
+
         InventoryItem foundItem = null;
         // This could likely be optimized
         for (InventoryItem item : inventory) {
@@ -467,9 +473,6 @@ public class UserService implements UserDetailsService {
             if (newItem.isEmpty()) {
                 return new ResponseEntity<>("The given item does not exist", HttpStatus.NO_CONTENT);
             }
-            if (inventoryItem.getUnit().equals("")) {
-                return new ResponseEntity<>("Invalid Unit", HttpStatus.BAD_REQUEST);
-            }
             // This could be replaced with a builder
             foundItem = new InventoryItem();
             foundItem.setUserId(user);
@@ -490,6 +493,15 @@ public class UserService implements UserDetailsService {
      * */
     public List<InventoryItem> getInventory(User user) {
         //TODO: Outbound Conversion so user gets inventory in the units they want
-        return inventoryRepository.findInventoryItemByUserId(user);
+        Optional<UserPreference> userPreference = userPreferenceRepository.findByUser(user);
+        List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
+        if (userPreference.isEmpty()) {
+            // default to metric conversion
+            ConversionUtils.convertInventory(inventory, true);
+            return inventory;
+        }
+
+        ConversionUtils.convertInventory(inventory, userPreference.get().isMetric());
+        return inventory;
     }
 }

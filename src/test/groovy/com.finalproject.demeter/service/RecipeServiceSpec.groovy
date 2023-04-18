@@ -10,6 +10,7 @@ import com.finalproject.demeter.dao.Recipe
 import com.finalproject.demeter.dao.RecipeItem
 import com.finalproject.demeter.dao.RecipeReview
 import com.finalproject.demeter.dao.User
+import com.finalproject.demeter.dao.UserPreference
 import com.finalproject.demeter.dto.PersonalRecipeItem
 import com.finalproject.demeter.dto.RecipeQuery
 import com.finalproject.demeter.dto.RecipeUpload
@@ -23,6 +24,7 @@ import com.finalproject.demeter.repository.PersonalRecipeRepository
 import com.finalproject.demeter.repository.RecipeItemRepository
 import com.finalproject.demeter.repository.RecipeRatingRepository
 import com.finalproject.demeter.repository.RecipeRepository
+import com.finalproject.demeter.repository.UserPreferenceRepository
 import com.finalproject.demeter.util.DislikedItemBuilder
 import com.finalproject.demeter.util.FavoriteRecipeBuilder
 import com.finalproject.demeter.util.FoodItemBuilder
@@ -48,9 +50,10 @@ class RecipeServiceSpec extends Specification{
     FavoriteRecipeRepository favoriteRecipeRepository = Mock()
     MinorItemRepository minorItemRepository = Mock()
     FoodService foodService = Mock()
+    UserPreferenceRepository userPreferenceRepository = Mock()
     RecipeService recipeService = new RecipeService(recipeRepository, recipeItemRepository, recipeRatingRepository,
             userService, foodItemRepository, personalRecipeRepository, dislikedItemRepository, minorItemRepository,
-            favoriteRecipeRepository, foodService)
+            favoriteRecipeRepository, foodService, userPreferenceRepository)
     User user = new User()
     FoodItem foodItemOne = null
     FoodItem foodItemTwo = null

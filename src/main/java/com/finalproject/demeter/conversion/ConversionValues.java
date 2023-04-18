@@ -17,7 +17,10 @@ import static com.finalproject.demeter.units.VolumetricUnit.*;
 import static com.finalproject.demeter.units.WeightUnit.*;
 
 public class ConversionValues {
-    private final static Map<Unit, Function<Float, ConversionIntermediate>> conversionFromStandardMap = new HashMap<>() {{
+    // TODO: Create Metric Fall Through
+    private final static Map<Unit, Function<Float, ConversionIntermediate>> conversionFromStandardMap = new HashMap<>()
+    {{
+        // Imperial Units
         // Length Conversions
         put(IN, ConversionValues::meterToInches);
         put(FT, ConversionValues::inchesToFoot);
@@ -34,6 +37,21 @@ public class ConversionValues {
         // Weight conversions
         put(OZ, ConversionValues::gramToOunce);
         put(LB, ConversionValues::ounceToPound);
+
+        // Metric Units
+        // Length Units
+        put(M, ConversionValues::meterToMeterReturn);
+        // Single Units
+        put(PIECE, ConversionValues::pieceToPieceReturn);
+        // Temp Units
+        put(C, ConversionValues::celsiusToCelsiusReturn);
+        // Volume Units
+        put(ML, ConversionValues::literToMilliliterReturn);
+        put(L, ConversionValues::literToLiterReturn);
+        // Weight Units
+        put(MG, ConversionValues::gramToMilligramReturn);
+        put(G, ConversionValues::gramToGramReturn);
+        put(KG, ConversionValues::gramToKilogramReturn);
     }};
 
     private final static Map<Unit, Function<Float, Measurements>> conversionToStandardMap = new HashMap<>() {{
@@ -89,6 +107,59 @@ public class ConversionValues {
     }
 
     //START OUTBOUND MEASUREMENT CONVERSIONS
+
+    public static ConversionIntermediate gramToKilogramReturn(Float quantity) {
+        Float convertedValue = Double.valueOf(quantity / 1000).floatValue();
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(convertedValue).unit(KG).build();
+    }
+
+    public static ConversionIntermediate gramToGramReturn(Float quantity) {
+        if (quantity < 1000 ) {
+            return new ConversionIntermediateBuilder().quantity(quantity).unit(G).build();
+        }
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(quantity).unit(KG).build();
+    }
+
+    public static ConversionIntermediate gramToMilligramReturn(Float quantity) {
+        Float convertedValue = Double.valueOf(quantity / 1000).floatValue();
+        if (convertedValue < 1000 ) {
+            return new ConversionIntermediateBuilder().quantity(convertedValue).unit(MG).build();
+        }
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(convertedValue).unit(G).build();
+    }
+
+    public static ConversionIntermediate literToLiterReturn(Float quantity) {
+        // Final Conversion
+        return new ConversionIntermediateBuilder().quantity(quantity).unit(L).build();
+    }
+
+    public static ConversionIntermediate literToMilliliterReturn(Float quantity) {
+        Float convertedValue = Double.valueOf(quantity / 1000).floatValue();
+        if (convertedValue < 1000 ) {
+            return new ConversionIntermediateBuilder().quantity(convertedValue).unit(ML).build();
+        }
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(convertedValue).unit(L).build();
+    }
+
+
+    public static ConversionIntermediate celsiusToCelsiusReturn(Float quantity) {
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(quantity).unit(C).build();
+    }
+
+    public static ConversionIntermediate pieceToPieceReturn(Float quantity) {
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(quantity).unit(PIECE).build();
+    }
+
+    public static ConversionIntermediate meterToMeterReturn(Float quantity) {
+        // This is to convert to the next level up
+        return new ConversionIntermediateBuilder().quantity(quantity).unit(M).build();
+    }
 
     public static ConversionIntermediate meterToInches(Float quantity) {
         Float convertedValue = Double.valueOf(quantity * 39.37).floatValue();

@@ -58,8 +58,9 @@ public class RecipeController {
     }
 
     @GetMapping("/getRecipeItems")
-    public ResponseEntity<?> getRecipeItemsByRecipeId(@RequestParam Long id) {
-        return recipeService.getRecipeItemsById(id);
+    public ResponseEntity<?> getRecipeItemsByRecipeId(@RequestParam Long id, @RequestHeader("AUTHORIZATION") String jwt)
+    {
+        return recipeService.getRecipeItemsById(id, jwt);
     }
     @GetMapping("/getRecipe")
     public ResponseEntity<?> getRecipeById(@RequestParam Long id) {
