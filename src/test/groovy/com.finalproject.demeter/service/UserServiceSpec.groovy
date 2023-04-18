@@ -59,14 +59,14 @@ class UserServiceSpec extends Specification {
     void setup(){
         userService = new UserService(userRepository, passwordEncoder, passwordTokenRepository, foodItemRepository,
                 inventoryRepository, minorItemRepository, jwtUtil, dislikedItemRepository, userPreferenceRepository)
-        user.username = "jSmith"
+        user.username = "jsmith"
         user.password = "testingPassword1!"
         user.firstName = "John"
         user.lastName = "Smith"
         user.email = "johns@gmail.com"
     }
 
-    def "When a valid used requests to change null as the preference it should return an error" () {
+    def "When a valid user requests to change null as the preference it should return an error" () {
         given:
         jwtUtil.extractEmail(_) >> ""
         userRepository.findByEmail(_) >> Optional.of(user)
@@ -95,7 +95,7 @@ class UserServiceSpec extends Specification {
         0 * userPreferenceRepository.save(_)
     }
 
-    def "When a valid used requests to change a valid preference, but no preference exists it should be created" () {
+    def "When a valid user requests to change a valid preference, but no preference exists it should be created" () {
         given:
         jwtUtil.extractEmail(_) >> ""
         userRepository.findByEmail(_) >> Optional.of(user)
@@ -110,7 +110,7 @@ class UserServiceSpec extends Specification {
         1 * userPreferenceRepository.save(_)
     }
 
-    def "When a valid used requests to change a valid preference, and their preference exists it should be changed" () {
+    def "When a valid user requests to change a valid preference, and their preference exists it should be changed" () {
         given:
         jwtUtil.extractEmail(_) >> ""
         userRepository.findByEmail(_) >> Optional.of(user)
@@ -425,11 +425,13 @@ class UserServiceSpec extends Specification {
     }
 
     def "when a valid user passed, their inventory should be found"() {
+        given:
+        userPreferenceRepository.findByUser(user) >> Optional.empty()
         when:
         userService.getInventory(user)
 
         then:
-        1 * inventoryRepository.findInventoryItemByUserId(user)
+        1 * inventoryRepository.findInventoryItemByUserId(user) >> new ArrayList<>()
     }
 
     def "when a valid user and update item are passed and the user has the items, a 200 should be returned (update add)" (){
@@ -489,8 +491,9 @@ class UserServiceSpec extends Specification {
         0 * inventoryRepository.delete(_)
     }
 
-    def "when a valid user and update item are passed, but the quantity is empty, 204 should be returned" (){
+    def "when a valid user and update item are passed, but the unit is empty, 204 should be returned" (){
         given:
+        userPreferenceRepository.findByUser(user) >> Optional.empty()
         List<InventoryItem> userInventory = List.of(item1, item2, item3)
         inventoryRepository.findInventoryItemByUserId(user) >> userInventory
         foodItemRepository.findById(6) >> Optional.of(new FoodItemBuilder().id(6).build())

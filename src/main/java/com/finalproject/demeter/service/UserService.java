@@ -1,6 +1,8 @@
 package com.finalproject.demeter.service;
 
+import com.finalproject.demeter.conversion.ConversionUtils;
 import com.finalproject.demeter.dao.*;
+import com.finalproject.demeter.dto.Measurements;
 import com.finalproject.demeter.dto.SignUpDto;
 import com.finalproject.demeter.dto.UpdateInventory;
 import com.finalproject.demeter.repository.*;
@@ -259,9 +261,10 @@ public class UserService implements UserDetailsService {
      * @return UserDetails object for the found user
      * */
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
-        User user = userRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail)
+        String finalUsernameOrEmail = usernameOrEmail.toLowerCase();
+        User user = userRepository.findByUsernameOrEmail(finalUsernameOrEmail, finalUsernameOrEmail)
                 .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found with username or email: "+ usernameOrEmail)
+                        new UsernameNotFoundException("User not found with username or email: "+ finalUsernameOrEmail)
                 );
 
         return new org.springframework.security.core.userdetails.User(user.getEmail(),
@@ -427,7 +430,13 @@ public class UserService implements UserDetailsService {
      * @return a response entity that signifies the status of the operation
      * */
     public ResponseEntity<String> updateInventory(User user, UpdateInventory inventoryItem) {
+        // TODO: Inbound conversion so inventory stays standard (Done)
         List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
+
+        if (inventoryItem.getUnit().equals("")) {
+            return new ResponseEntity<>("Invalid Unit", HttpStatus.BAD_REQUEST);
+        }
+
         InventoryItem foundItem = null;
         // This could likely be optimized
         for (InventoryItem item : inventory) {
@@ -437,14 +446,20 @@ public class UserService implements UserDetailsService {
             }
         }
 
+        // Conversion of the inventory item into standard units
+        Measurements conversionMeasurements = ConversionUtils
+                .convertToStandardUnit(inventoryItem.getUnit(), inventoryItem.getQuantity());
+        inventoryItem.setUnit(conversionMeasurements.getUnit());
+        inventoryItem.setQuantity(conversionMeasurements.getQuantity());
+
         if (foundItem != null) {
             Float currentQuantity = foundItem.getQuantity();
             if (currentQuantity + inventoryItem.getQuantity() == 0) {
                 inventoryRepository.delete(foundItem);
-                return new ResponseEntity("Inventory Item was Removed", HttpStatus.OK);
+                return new ResponseEntity<>("Inventory Item was Removed", HttpStatus.OK);
             } else {
                 if (currentQuantity + inventoryItem.getQuantity() < 0) {
-                    return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
+                    return new ResponseEntity<>("Invalid Quantity", HttpStatus.BAD_REQUEST);
                 }
                 // update the inventory
                 foundItem.setQuantity(currentQuantity + inventoryItem.getQuantity());
@@ -452,14 +467,11 @@ public class UserService implements UserDetailsService {
         } else {
             // The user does not have the item in their current inventory
             if (inventoryItem.getQuantity() <= 0) { // and the added value is invalid
-                return new ResponseEntity("Invalid Quantity", HttpStatus.BAD_REQUEST);
+                return new ResponseEntity<>("Invalid Quantity", HttpStatus.BAD_REQUEST);
             }
             Optional<FoodItem> newItem = foodItemRepository.findById(inventoryItem.getFoodId());
-            if (!newItem.isPresent()) {
-                return new ResponseEntity("The given item does not exist", HttpStatus.NO_CONTENT);
-            }
-            if (inventoryItem.getUnit().equals("")) {
-                return new ResponseEntity("Invalid Unit", HttpStatus.BAD_REQUEST);
+            if (newItem.isEmpty()) {
+                return new ResponseEntity<>("The given item does not exist", HttpStatus.NO_CONTENT);
             }
             // This could be replaced with a builder
             foundItem = new InventoryItem();
@@ -467,9 +479,11 @@ public class UserService implements UserDetailsService {
             foundItem.setFoodId(newItem.get());
             foundItem.setQuantity(inventoryItem.getQuantity());
         }
+
+        // Possible check to see if this is null or empty
         foundItem.setUnit(inventoryItem.getUnit());
         inventoryRepository.save(foundItem);
-        return new ResponseEntity("Inventory was saved", HttpStatus.OK);
+        return new ResponseEntity<>("Inventory was saved", HttpStatus.OK);
     }
 
     /**
@@ -478,6 +492,16 @@ public class UserService implements UserDetailsService {
      * @return a list of the user's inventory items
      * */
     public List<InventoryItem> getInventory(User user) {
-        return inventoryRepository.findInventoryItemByUserId(user);
+        //TODO: Outbound Conversion so user gets inventory in the units they want
+        Optional<UserPreference> userPreference = userPreferenceRepository.findByUser(user);
+        List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
+        if (userPreference.isEmpty()) {
+            // default to metric conversion
+            ConversionUtils.convertInventory(inventory, true);
+            return inventory;
+        }
+
+        ConversionUtils.convertInventory(inventory, userPreference.get().isMetric());
+        return inventory;
     }
 }
