@@ -100,14 +100,14 @@ public class AuthController {
     public ResponseEntity<?> authenticateUser(@RequestBody LoginDto loginDto){
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginDto.getUsername(),
+                        loginDto.getUsername().toLowerCase(),
                         loginDto.getPassword()
                 )
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
         // Get the user
-        UserDetails userDetails = userService.loadUserByUsername(loginDto.getUsername());
-        Optional<User> userOpt = userService.findByUsername(loginDto.getUsername());
+        UserDetails userDetails = userService.loadUserByUsername(loginDto.getUsername().toLowerCase());
+        Optional<User> userOpt = userService.findByUsername(loginDto.getUsername().toLowerCase());
         // Generate jwtToken
         if (userOpt.isPresent()) {
             User user = userOpt.get();

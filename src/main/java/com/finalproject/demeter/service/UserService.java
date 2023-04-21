@@ -279,7 +279,7 @@ public class UserService implements UserDetailsService {
      * */
     public ResponseEntity<?> addUser(SignUpDto signUpDto) {
         // add check for username exists in a DB
-        if(userRepository.existsByUsername(signUpDto.getUsername())){
+        if(userRepository.existsByUsername(signUpDto.getUsername().toLowerCase())){
             return new ResponseEntity<>("Username is already taken!", HttpStatus.BAD_REQUEST);
         }
 
@@ -305,7 +305,7 @@ public class UserService implements UserDetailsService {
         User user = new User();
         user.setFirstName(signUpDto.getFirstName());
         user.setLastName(signUpDto.getLastName());
-        user.setUsername(signUpDto.getUsername());
+        user.setUsername(signUpDto.getUsername().toLowerCase());
         user.setEmail(signUpDto.getEmail().toLowerCase());
         // Hash password
         user.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
