@@ -430,7 +430,6 @@ public class UserService implements UserDetailsService {
      * @return a response entity that signifies the status of the operation
      * */
     public ResponseEntity<String> updateInventory(User user, UpdateInventory inventoryItem) {
-        // TODO: Inbound conversion so inventory stays standard (Done)
         List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
 
         if (inventoryItem.getUnit().equals("")) {
@@ -454,7 +453,8 @@ public class UserService implements UserDetailsService {
 
         if (foundItem != null) {
             Float currentQuantity = foundItem.getQuantity();
-            if (currentQuantity + inventoryItem.getQuantity() == 0) {
+            if (currentQuantity + inventoryItem.getQuantity() < 0.000001 &&
+                    currentQuantity + inventoryItem.getQuantity() > -0.000001) {
                 inventoryRepository.delete(foundItem);
                 return new ResponseEntity<>("Inventory Item was Removed", HttpStatus.OK);
             } else {
@@ -466,7 +466,7 @@ public class UserService implements UserDetailsService {
             }
         } else {
             // The user does not have the item in their current inventory
-            if (inventoryItem.getQuantity() <= 0) { // and the added value is invalid
+            if (inventoryItem.getQuantity() < -0.000001) { // and the added value is invalid
                 return new ResponseEntity<>("Invalid Quantity", HttpStatus.BAD_REQUEST);
             }
             Optional<FoodItem> newItem = foodItemRepository.findById(inventoryItem.getFoodId());
