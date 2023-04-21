@@ -453,14 +453,10 @@ public class UserService implements UserDetailsService {
 
         if (foundItem != null) {
             Float currentQuantity = foundItem.getQuantity();
-            if (currentQuantity + inventoryItem.getQuantity() < 0.000001 &&
-                    currentQuantity + inventoryItem.getQuantity() > -0.000001) {
+            if (currentQuantity + inventoryItem.getQuantity() < 0.000001) {
                 inventoryRepository.delete(foundItem);
                 return new ResponseEntity<>("Inventory Item was Removed", HttpStatus.OK);
             } else {
-                if (currentQuantity + inventoryItem.getQuantity() < 0) {
-                    return new ResponseEntity<>("Invalid Quantity", HttpStatus.BAD_REQUEST);
-                }
                 // update the inventory
                 foundItem.setQuantity(currentQuantity + inventoryItem.getQuantity());
             }
