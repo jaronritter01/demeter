@@ -251,6 +251,9 @@ public class UserService implements UserDetailsService {
      * @return An optional containing the user if one could be found.
      * */
     public Optional<User> getUserFromJwtToken(String jwtToken){
+        if (jwtToken == null || jwtToken.length() < 8) {
+            return Optional.empty();
+        }
         String email = jwtUtil.extractEmail(jwtToken.substring(7));
         return userRepository.findByEmail(email);
     }
@@ -264,7 +267,7 @@ public class UserService implements UserDetailsService {
         String finalUsernameOrEmail = usernameOrEmail.toLowerCase();
         User user = userRepository.findByUsernameOrEmail(finalUsernameOrEmail, finalUsernameOrEmail)
                 .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found with username or email: "+ finalUsernameOrEmail)
+                        new UsernameNotFoundException("User not found with username or email: " + finalUsernameOrEmail)
                 );
 
         return new org.springframework.security.core.userdetails.User(user.getEmail(),

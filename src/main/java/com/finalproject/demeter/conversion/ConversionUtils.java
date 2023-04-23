@@ -159,10 +159,11 @@ public class ConversionUtils {
     private static Unit getUnitOutMetric(String unitToConvert) {
         return switch (unitToConvert.toLowerCase()) {
             case "m", "meter", "meters" -> LengthUnit.M;
-            case "peice", "pieces" -> SingularUnit.PIECE;
+            case "piece", "pieces" -> SingularUnit.PIECE;
             case "celsius", "c", "°c" -> TemperatureUnit.C;
             case "liter", "liters", "l" -> VolumetricUnit.L;
             case "gram", "grams", "g" -> WeightUnit.G;
+            case "default" -> VolumetricUnit.DEFAULT;
             default -> null;
         };
     }
@@ -170,10 +171,11 @@ public class ConversionUtils {
     private static Unit getUnitOutImperial(String unitToConvert) {
         return switch (unitToConvert.toLowerCase()) {
             case "m", "meter", "meters" -> LengthUnit.IN;
-            case "peice", "pieces" -> SingularUnit.SLICE;
+            case "piece", "pieces" -> SingularUnit.SLICE;
             case "celsius", "c", "°c" -> TemperatureUnit.F;
             case "liter", "liters", "l" -> VolumetricUnit.TSP;
             case "gram", "grams", "g" -> WeightUnit.OZ;
+            case "default" -> VolumetricUnit.DEFAULT;
             default -> null;
         };
     }

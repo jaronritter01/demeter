@@ -2,6 +2,7 @@ package com.finalproject.demeter.conversion;
 
 import com.finalproject.demeter.dto.Measurements;
 import com.finalproject.demeter.units.Unit;
+import com.finalproject.demeter.units.VolumetricUnit;
 import com.finalproject.demeter.util.MeasurementsBuilder;
 
 import java.text.DecimalFormat;
@@ -52,6 +53,7 @@ public class ConversionValues {
         put(MG, ConversionValues::gramToMilligramReturn);
         put(G, ConversionValues::gramToGramReturn);
         put(KG, ConversionValues::gramToKilogramReturn);
+        put(VolumetricUnit.DEFAULT, ConversionValues::defaultToDefaultReturn);
     }};
 
     private final static Map<Unit, Function<Float, Measurements>> conversionToStandardMap = new HashMap<>() {{
@@ -84,6 +86,7 @@ public class ConversionValues {
         put(LB, ConversionValues::poundToGram);
         put(ST, ConversionValues::stoneToGram);
         put(T, ConversionValues::tonToGram);
+        put(VolumetricUnit.DEFAULT, ConversionValues::defaultToDefault);
     }};
 
     private static final DecimalFormat df = new DecimalFormat("#.000000");
@@ -107,6 +110,10 @@ public class ConversionValues {
     }
 
     //START OUTBOUND MEASUREMENT CONVERSIONS
+
+    private static ConversionIntermediate defaultToDefaultReturn(Float quantity) {
+        return new ConversionIntermediateBuilder().quantity(quantity).unit(VolumetricUnit.DEFAULT).build();
+    }
 
     public static ConversionIntermediate gramToKilogramReturn(Float quantity) {
         Float convertedValue = Double.valueOf(quantity / 1000).floatValue();
@@ -245,6 +252,10 @@ public class ConversionValues {
     }
 
     //START INBOUND MEASUREMENT CONVERSIONS
+
+    private static Measurements defaultToDefault(Float quantity) {
+        return new MeasurementsBuilder().units("default").quantity(quantity).build();
+    }
 
     public static Measurements meterToMeter(Float quantity) {
         return new MeasurementsBuilder().units("m").quantity(quantity).build();
