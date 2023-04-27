@@ -175,7 +175,7 @@ public class RecipeService {
         Optional<List<MinorItem>> userMinorItems = Optional.empty();
 
         if (user.isPresent()) {
-            userInventory = userService.getInventory(user.get());
+            userInventory = userService.getInventory(user.get(), false);
             userPreferences = dislikedItemRepository.findByUser(user.get());
             userMinorItems = Optional.ofNullable(minorItemRepository.findMinorItemsByUser(user.get()));
         }

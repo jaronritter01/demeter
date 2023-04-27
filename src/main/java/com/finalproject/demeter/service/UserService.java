@@ -490,17 +490,20 @@ public class UserService implements UserDetailsService {
      * @param user: the user who needs their inventory retrieved.
      * @return a list of the user's inventory items
      * */
-    public List<InventoryItem> getInventory(User user) {
+    public List<InventoryItem> getInventory(User user, boolean convert) {
         //TODO: Outbound Conversion so user gets inventory in the units they want
         Optional<UserPreference> userPreference = userPreferenceRepository.findByUser(user);
         List<InventoryItem> inventory = inventoryRepository.findInventoryItemByUserId(user);
-        if (userPreference.isEmpty()) {
-            // default to metric conversion
-            ConversionUtils.convertInventory(inventory, true);
-            return inventory;
+
+        if (convert) {
+            if (userPreference.isEmpty()) {
+                // default to metric conversion
+                ConversionUtils.convertInventory(inventory, true);
+            } else {
+                ConversionUtils.convertInventory(inventory, userPreference.get().isMetric());
+            }
         }
 
-        ConversionUtils.convertInventory(inventory, userPreference.get().isMetric());
         return inventory;
     }
 }

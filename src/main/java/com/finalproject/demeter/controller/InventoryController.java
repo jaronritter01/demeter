@@ -50,7 +50,7 @@ public class InventoryController {
         ResponseEntity<String> response = userService.updateInventory(user.get(), item);
         if (response.getBody().equals("Inventory was saved") ||
                 response.getBody().equals("Inventory Item was Removed")) {
-            List<InventoryItem> inventory = userService.getInventory(user.get());
+            List<InventoryItem> inventory = userService.getInventory(user.get(), true);
             return new ResponseEntity<>(inventory, HttpStatus.OK);
         }
 
@@ -61,7 +61,7 @@ public class InventoryController {
     List<InventoryItem> getUserInventory(@RequestHeader("AUTHORIZATION") String jwt) {
         Optional<User> user = userService.getUserFromJwtToken(jwt);
         if (user.isPresent()) {
-            return userService.getInventory(user.get());
+            return userService.getInventory(user.get(), true);
         }
         return new ArrayList<>();
     }

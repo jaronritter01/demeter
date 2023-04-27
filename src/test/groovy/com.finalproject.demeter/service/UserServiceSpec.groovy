@@ -428,7 +428,7 @@ class UserServiceSpec extends Specification {
         given:
         userPreferenceRepository.findByUser(user) >> Optional.empty()
         when:
-        userService.getInventory(user)
+        userService.getInventory(user, true)
 
         then:
         1 * inventoryRepository.findInventoryItemByUserId(user) >> new ArrayList<>()
