@@ -237,7 +237,7 @@ public class RecipeService {
                 .findByUserAndRecipe(user.get().getId(), recipe.get().getId());
 
         if (personalRecipe.isEmpty()) {
-            return new ResponseEntity<>("Personal recipe could not be found", HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>("Personal recipe could not be found", HttpStatus.OK);
         }
 
         // remove the personal recipe
