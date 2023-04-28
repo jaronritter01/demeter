@@ -10,7 +10,6 @@ import com.finalproject.demeter.dao.Recipe
 import com.finalproject.demeter.dao.RecipeItem
 import com.finalproject.demeter.dao.RecipeReview
 import com.finalproject.demeter.dao.User
-import com.finalproject.demeter.dao.UserPreference
 import com.finalproject.demeter.dto.PersonalRecipeItem
 import com.finalproject.demeter.dto.RecipeQuery
 import com.finalproject.demeter.dto.RecipeUpload
