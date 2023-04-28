@@ -217,6 +217,40 @@ public class RecipeService {
     }
 
     /**
+     * This is used to make a personal recipe public. (User will lose modify access to this recipe)
+     * @param jwt JWT for a user.
+     * @param recipeId ID of the recipe that would like to be published.
+     * @return ResponseEntity that indicated the status of the operation.
+     * */
+    public ResponseEntity<?> publishPersonalRecipe(String jwt, long recipeId) {
+        Optional<User> user = userService.getUserFromJwtToken(jwt);
+        if (user.isEmpty()) {
+            return new ResponseEntity<>("User could not be found", HttpStatus.NOT_FOUND);
+        }
+
+        Optional<Recipe> recipe = Optional.ofNullable(recipeRepository.findById(recipeId));
+        if (recipe.isEmpty()) {
+            return new ResponseEntity<>("Recipe could not be found", HttpStatus.NOT_FOUND);
+        }
+
+        Optional<PersonalRecipe> personalRecipe = personalRecipeRepository
+                .findByUserAndRecipe(user.get().getId(), recipe.get().getId());
+
+        if (personalRecipe.isEmpty()) {
+            return new ResponseEntity<>("Personal recipe could not be found", HttpStatus.NOT_FOUND);
+        }
+
+        // remove the personal recipe
+        personalRecipeRepository.delete(personalRecipe.get());
+
+        // Set recipe to be public
+        recipe.get().setIsPublic(true);
+        // Save recipe
+        recipeRepository.save(recipe.get());
+        return new ResponseEntity<>("Recipe was published", HttpStatus.NOT_FOUND);
+    }
+
+    /**
      * This is used to get all the personal recipes associated with a user.
      * @param jwt: The JWT for a user.
      * @return A response Entity that shows the status of the operation.
@@ -235,7 +269,6 @@ public class RecipeService {
         if (recipeList.size() == 0) {
             return new ResponseEntity<>("No Recipes Found", HttpStatus.OK);
         }
-        // TODO: Convert on return
         return new ResponseEntity<>(recipeList, HttpStatus.OK);
     }
 
@@ -357,7 +390,6 @@ public class RecipeService {
                                     Optional<List<DislikedItem>> userPreferences,
                                     Optional<List<MinorItem>> minorItems,
                                     User user, RecipeWithSub recipeWithSub) {
-        // TODO: Shouldn't need conversion
         if (recipeItems.size() == 0) {
             return false;
         }
@@ -418,6 +450,12 @@ public class RecipeService {
         return true;
     }
 
+    /**
+     * Helper Method to check if a food item is a minor item for a user.
+     * @param foodItem The item to see if minor.
+     * @param minorItems A list of minor items for a given user.
+     * @return a boolean if the item is minor or not.
+     * */
     private boolean isAMinorItem(FoodItem foodItem, List<MinorItem> minorItems) {
         for (MinorItem minorItem : minorItems) {
             if (foodItem.getId() == minorItem.getFoodItem().getId()){
@@ -427,6 +465,12 @@ public class RecipeService {
         return false;
     }
 
+    /**
+     * Helper method used to check if a food item is in the set of disliked items for a user.
+     * @param foodItem The food item to check
+     * @param dislikedItems A list of disliked items for a user
+     * @return a boolean if the item is dislike by as user.
+     * */
     private boolean isNotDislikedItem(FoodItem foodItem, List<DislikedItem> dislikedItems) {
         for (DislikedItem dislikedItem : dislikedItems){
             // If the food item has the same id, it has been marked as disliked
@@ -438,6 +482,10 @@ public class RecipeService {
         return true;
     }
 
+    /**
+     * A method used to set the average rating score for a recipes and get the number of reviews for a recipe
+     * @param recipe the recipe to find info for.
+     * */
     private void setRecipeRatings (Recipe recipe){
         Optional<Long> count = recipeRatingRepository.countByRecipeId(recipe.getId());
         count.ifPresentOrElse(
@@ -451,6 +499,11 @@ public class RecipeService {
         );
     }
 
+    /**
+     * Used to get all the recipes.
+     * @param pageSettings the settings for the pagination desired.
+     * @return a List of recipes
+     * */
     public List<Recipe> getAllRecipes(PaginationSetting pageSettings) {
         Pageable page = PageRequest.of(pageSettings.getPageNumber(), pageSettings.getPageSize());
         List<Recipe> returnList = new ArrayList<>();
@@ -461,9 +514,13 @@ public class RecipeService {
         return returnList;
     }
 
-    // Needs testing
+    /**
+     * Get the recipe items by the recipe id.
+     * @param id the id the recipe you'd like items for.
+     * @param jwtToken the passed JWT for a request.
+     * @return A response entity with the status of the operation.
+     * */
     public ResponseEntity<?> getRecipeItemsById(Long id, String jwtToken) {
-        // TODO: Possible conversion. Might just leave as returning standard units
         Optional<Recipe> recipe = recipeRepository.findById(id);
         if (recipe.isPresent()){
             Optional<List<RecipeItem>> recipeItemList = recipeItemRepository.findRecipeItemsByRecipe(recipe.get());
@@ -490,6 +547,11 @@ public class RecipeService {
         return new ResponseEntity<>("Recipe Not Found", HttpStatus.NO_CONTENT);
     }
 
+    /**
+     * Helper method used to extract the pagination settings from a request.
+     * @param objs the object that contains the pagination settings.
+     * @return PaginationSetting Object with the passed info.
+     * */
     public PaginationSetting getPaginationSettings(HashMap<String, HashMap<String, String>> objs) {
         try {
             Integer pageNumber = Integer.parseInt(objs.get("page").get("pageNumber"));
@@ -500,12 +562,17 @@ public class RecipeService {
                     .build();
         }
         catch (Exception e){
-            LOGGER.error("Issue parsing page settings: ", e.getMessage(), e);
+            LOGGER.error("Issue parsing page settings: {} {}", e.getMessage(), e);
         }
 
         return DEFAULT_PAGE;
     }
 
+    /**
+     * Helper method used to get the recipe query from a request.
+     * @param objs the object that contains the recipe query data.
+     * @return A RecipeQuery Object that has the extracted data.
+     * */
     public RecipeQuery getRecipeQuery(HashMap<String, HashMap<String, String>> objs) {
         try {
             return new RecipeQueryBuilder()
@@ -513,18 +580,27 @@ public class RecipeService {
                     .value(objs.get("query").get("value"))
                     .build();
         } catch (Exception e) {
-            LOGGER.error("Issue parsing query: ", e.getMessage(), e);
+            LOGGER.error("Issue parsing query: {} {}", e.getMessage(), e);
         }
         return DEFAULT_QUERY;
     }
 
+    /**
+     * Used to convert a page item to a list of items.
+     * @param page the page to convert.
+     * @return the List
+     * */
     private <T> List<T> pageToList(Page<T> page){
         List<T> returnList = new ArrayList<>();
         page.forEach(returnList::add);
         return returnList;
     }
 
-    // Write tests for this
+    /**
+     * Used to get a recipe by its id.
+     * @param id the id of the recipe,
+     * @return a response entity that either has the recipe or an error.
+     * */
     public ResponseEntity<?> getRecipeById(Long id) {
         Optional<Recipe> recipe = recipeRepository.findById(id);
         if (recipe.isPresent()){
@@ -534,6 +610,11 @@ public class RecipeService {
         return new ResponseEntity<>("Recipe does not exist", HttpStatus.NOT_FOUND);
     }
 
+    /**
+     * Used to convert a page of recipes to a map to return as json.
+     * @param results the Page to convert.
+     * @return a map with the converted data.
+     * */
     private HashMap<String, Object> createReturnMap(Page<Recipe> results) {
         HashMap<String, Object> returnMap = new HashMap<>();
         List<Recipe> recipeList = pageToList(results);
@@ -637,8 +718,6 @@ public class RecipeService {
      * @return ResponseEntity with an error message or recipe review.
      */
     public ResponseEntity<?> getRecipeReview(long id) {
-        // TODO: Look into if this recipe is needed on return
-        // TODO: Possible conversion. Might just leave as returning standard units
         Optional<RecipeReview> recipeReview = recipeRatingRepository.findById(id);
         if (recipeReview.isPresent()){
             return new ResponseEntity<>(recipeReview, HttpStatus.OK);

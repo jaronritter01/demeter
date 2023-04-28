@@ -83,6 +83,11 @@ public class RecipeController {
         return recipeService.getPersonalRecipes(jwt);
     }
 
+    @PostMapping("/publishPersonalRecipe")
+    public ResponseEntity<?> publishPersonalRecipe(@RequestHeader("AUTHORIZATION") String jwt,
+                                                   @RequestBody long recipeId) {
+        return recipeService.publishPersonalRecipe(jwt, recipeId);
+    }
 
     @PostMapping("/queryRecipes")
     public ResponseEntity<?> queryRecipes(@RequestBody HashMap<String, HashMap<String, String>> requestObject) {
