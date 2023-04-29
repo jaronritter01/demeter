@@ -550,7 +550,7 @@ class UserServiceSpec extends Specification {
         1 * inventoryRepository.delete(_)
     }
 
-    def "when a valid user and invalid update item are passed, a 400 should be returned" (){
+    def "when a valid user and invalid update item are passed, the item should be removed" (){
         given:
         List<InventoryItem> userInventory = List.of(item1, item2, item3)
         inventoryRepository.findInventoryItemByUserId(user) >> userInventory
@@ -563,9 +563,9 @@ class UserServiceSpec extends Specification {
         ResponseEntity<String> re = userService.updateInventory(user, ui)
 
         then:
-        re.body == "Invalid Quantity"
-        re.statusCode == HttpStatus.BAD_REQUEST
-        0 * inventoryRepository.delete(_)
+        re.body == "Inventory Item was Removed"
+        re.statusCode == HttpStatus.OK
+        1 * inventoryRepository.delete(_)
         0 * inventoryRepository.save(_)
     }
 
@@ -715,7 +715,7 @@ class UserServiceSpec extends Specification {
     def "this should return that the username is already taken" () {
         given:
         SignUpDto newUser = new SignUpDto()
-        newUser.username = "jSmith"
+        newUser.username = "jsmith"
         and:
         userRepository.existsByUsername(newUser.getUsername()) >> true
 
@@ -730,14 +730,14 @@ class UserServiceSpec extends Specification {
     def "this should return that the information provided does not meet the requirements" () {
         given:
         SignUpDto newUser = new SignUpDto()
-        newUser.username = "jSmith"
+        newUser.username = "jsmith"
         newUser.password = "notagoodpassword"
         and:
         userRepository.existsByUsername(newUser.getUsername()) >> false
         userRepository.existsByEmail(newUser.getEmail()) >> false
 
         when:
-        ResponseEntity<String> response = userService.addUser(newUser)
+        ResponseEntity<?> response = userService.addUser(newUser)
 
         then:
         response.statusCode == HttpStatus.BAD_REQUEST
@@ -748,7 +748,7 @@ class UserServiceSpec extends Specification {
     def "this should return that the email is already taken" () {
         given:
         SignUpDto newUser = new SignUpDto()
-        newUser.username = "jSmith"
+        newUser.username = "jsmith"
         newUser.email = "johns@gmail.com"
         and:
         userRepository.existsByUsername(_) >> false
@@ -765,7 +765,7 @@ class UserServiceSpec extends Specification {
     def "this should successfully register a user" () {
         given:
         SignUpDto newUser = new SignUpDto()
-        newUser.username = "jSmith"
+        newUser.username = "jsmith"
         newUser.password = "testingPassword1!"
         newUser.firstName = "John"
         newUser.lastName = "Smith"
