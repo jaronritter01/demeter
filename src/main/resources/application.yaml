@@ -1,8 +1,12 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/${db_name}
-    username: ${db_username}
-    password: ${db_password}
+    url: jdbc:postgresql:///demeterdb
+    username: postgres
+    password: ${demeter_db_password}
+    hikari:
+      data-source-properties:
+        socketFactory: com.google.cloud.sql.postgres.SocketFactory
+        cloudSqlInstance: mykitchen-385104:us-central1:demeterdb
 
   jpa:
     hibernate:
@@ -17,13 +21,17 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: demeterappemailteam@gmail.com
-    password: mhauuqrdaminegsc
+    password: ${demeter_email_password}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+  sql:
+    init:
+      continue-on-error: true
+      mode: always
 
 server:
   error:

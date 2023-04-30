@@ -25,6 +25,9 @@ dependencies {
 	// Logging
 	implementation("org.springframework.boot:spring-boot-starter-log4j2:3.0.2")
     implementation("org.jetbrains:annotations:20.1.0")
+	// Cloud
+	implementation("org.springframework.cloud:spring-cloud-gcp-starter-sql-postgresql:1.2.8.RELEASE")
+	//implementation("org.springframework.cloud:spring-cloud-gcp-starter-secretmanager:1.2.2.RELEASE")
     compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.projectlombok:lombok")
