@@ -717,4 +717,271 @@ class RecipeServiceSpec extends Specification{
         then:
         !canBeMade
     }
+
+    def "When a user does not have the right ingredients for a recipe, but has more than 1 subbed items" () {
+        given:
+        List<RecipeItem> recipeItems = new ArrayList<>()
+        Optional<List<DislikedItem>> userPreferences = Optional.empty()
+        List<FoodItem> foodItemList = new ArrayList<FoodItem>();
+        foodItemList.add(foodItemTwo);
+        foodService.getSubItems(user, 1) >> foodItemList
+        foodService.getSubItems(user, 2) >> foodItemList
+
+        and:
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        RecipeItem recipeItemTwo = new RecipeItemBuilder().id(1L).foodItem(foodItemTwo).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        FoodItem foodItemThree = new FoodItemBuilder().id(3L).name("item3")
+                .description("item 3 description").reusable(false).picUrl("randomUrl").build()
+
+        and:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemThree)
+                .quantity(10F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        recipeItems.add(recipeItemOne)
+        recipeItems.add(recipeItemTwo)
+
+        and:
+        Optional<List<MinorItem>> minorItemsOpt = Optional.empty()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMade(userInventory, recipeItems, userPreferences, minorItemsOpt, user, new RecipeWithSub())
+
+        then:
+        !canBeMade
+    }
+
+    def "test successful return of empty list with getRecipeWithInventory" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+
+        when:
+        List<RecipeWithSub> recipeWithSubList = recipeService.getRecipeWithInventory(_ as String, RecipeService.DEFAULT_PAGE)
+
+        then:
+        recipeWithSubList.isEmpty()
+    }
+
+    def "test successful return of populated recipe list with getRecipeWithInventory" () {
+        given:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(5.0F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        userService.getInventory(user, false) >> userInventory
+        recipeRepository.findAllPublic() >> recipeList
+
+        and:
+        List<RecipeItem> recipeItemList = new ArrayList<RecipeItem>()
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        recipeItemList.add(recipeItemOne)
+        recipeItemRepository.findRecipeItemsByRecipe(_) >> Optional.of(recipeItemList)
+
+        and:
+        List<DislikedItem> userPreferences = new ArrayList<>()
+        dislikedItemRepository.findByUser(_) >> Optional.of(userPreferences)
+        recipeRatingRepository.countByRecipeId(_) >> Optional.of(0L)
+        recipeRatingRepository.getAverageReviewByRecipeId(_) >> Optional.of(0f)
+
+        when:
+        List<RecipeWithSub> recipeWithSubList = recipeService.getRecipeWithInventory(_ as String, RecipeService.DEFAULT_PAGE)
+
+        then:
+        !recipeWithSubList.isEmpty()
+    }
+
+    def "test successful return of populated recipe list with substitutes getRecipeWithInventory" () {
+        given:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemTwo)
+                .quantity(5.0F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        userService.getInventory(user, false) >> userInventory
+        recipeRepository.findAllPublic() >> recipeList
+
+        and:
+        List<RecipeItem> recipeItemList = new ArrayList<RecipeItem>()
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        recipeItemList.add(recipeItemOne)
+        recipeItemRepository.findRecipeItemsByRecipe(_) >> Optional.of(recipeItemList)
+
+        and:
+        List<FoodItem> subItems = new ArrayList<>()
+        subItems.add(foodItemTwo)
+        foodService.getSubItems(_, 1L) >> subItems
+
+        and:
+        List<DislikedItem> userPreferences = new ArrayList<>()
+        dislikedItemRepository.findByUser(_) >> Optional.of(userPreferences)
+        recipeRatingRepository.countByRecipeId(_) >> Optional.of(0L)
+        recipeRatingRepository.getAverageReviewByRecipeId(_) >> Optional.of(0f)
+
+        when:
+        List<RecipeWithSub> recipeWithSubList = recipeService.getRecipeWithInventory(_ as String, RecipeService.DEFAULT_PAGE)
+
+        then:
+        !recipeWithSubList.isEmpty()
+    }
+
+    def "test empty list for not enough quantity of an item for a recipe getRecipeWithInventory" () {
+        given:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(1.0F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        userService.getInventory(user, false) >> userInventory
+        recipeRepository.findAllPublic() >> recipeList
+
+        and:
+        List<RecipeItem> recipeItemList = new ArrayList<RecipeItem>()
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        recipeItemList.add(recipeItemOne)
+        recipeItemRepository.findRecipeItemsByRecipe(_) >> Optional.of(recipeItemList)
+
+        and:
+        List<DislikedItem> userPreferences = new ArrayList<>()
+        dislikedItemRepository.findByUser(_) >> Optional.of(userPreferences)
+        recipeRatingRepository.countByRecipeId(_) >> Optional.of(0L)
+        recipeRatingRepository.getAverageReviewByRecipeId(_) >> Optional.of(0f)
+
+        when:
+        List<RecipeWithSub> recipeList = recipeService.getRecipeWithInventory(_ as String, RecipeService.DEFAULT_PAGE)
+
+        then:
+        recipeList.isEmpty()
+    }
+
+    def "test empty list returns with a disliked item present getRecipeWithInventory" () {
+        given:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(5.0F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        userService.getInventory(user, false) >> userInventory
+        recipeRepository.findAllPublic() >> recipeList
+
+        and:
+        List<RecipeItem> recipeItemList = new ArrayList<RecipeItem>()
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        RecipeItem recipeItemTwo = new RecipeItemBuilder().id(2L).foodItem(foodItemTwo).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        recipeItemList.add(recipeItemOne)
+        recipeItemList.add(recipeItemTwo)
+        recipeItemRepository.findRecipeItemsByRecipe(_) >> Optional.of(recipeItemList)
+
+        and:
+        List<DislikedItem> userPreferences = new ArrayList<>()
+        DislikedItem dislikedItem = new DislikedItemBuilder().id(1L).user(user).foodItem(foodItemTwo).build()
+        userPreferences.add(dislikedItem)
+        dislikedItemRepository.findByUser(_) >> Optional.of(userPreferences)
+        recipeRatingRepository.countByRecipeId(_) >> Optional.of(0L)
+        recipeRatingRepository.getAverageReviewByRecipeId(_) >> Optional.of(0f)
+
+        when:
+        List<RecipeWithSub> recipeList = recipeService.getRecipeWithInventory(_ as String, RecipeService.DEFAULT_PAGE)
+
+        then:
+        recipeList.isEmpty()
+    }
+
+    def "test recipe list returns with a minor item present getRecipeWithInventory" () {
+        given:
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemOne)
+                .quantity(5.0F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        userService.getInventory(user, false) >> userInventory
+        recipeRepository.findAllPublic() >> recipeList
+
+        and:
+        List<RecipeItem> recipeItemList = new ArrayList<RecipeItem>()
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        RecipeItem recipeItemTwo = new RecipeItemBuilder().id(2L).foodItem(foodItemTwo).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        recipeItemList.add(recipeItemOne)
+        recipeItemList.add(recipeItemTwo)
+        recipeItemRepository.findRecipeItemsByRecipe(_) >> Optional.of(recipeItemList)
+
+        and:
+        List<DislikedItem> userPreferences = new ArrayList<>()
+        dislikedItemRepository.findByUser(_) >> Optional.of(userPreferences)
+        recipeRatingRepository.countByRecipeId(_) >> Optional.of(0L)
+        recipeRatingRepository.getAverageReviewByRecipeId(_) >> Optional.of(0f)
+
+        and:
+        minorItems = List.of(new MinorItemBuilder().id(1L).user(user).foodItem(foodItemTwo).build())
+        minorItemRepository.findMinorItemsByUser(_) >> minorItems
+
+        when:
+        List<RecipeWithSub> recipeList = recipeService.getRecipeWithInventory(_ as String, RecipeService.DEFAULT_PAGE)
+
+        then:
+        !recipeList.isEmpty()
+    }
+
+    def "test empty list return of if more than 1 substitute exists getRecipeWithInventory" () {
+        given:
+        // create 2 more foodItems. Odds will be for recipeItems and evens for InventoryItems
+        FoodItem foodItemThree = new FoodItemBuilder().id(3L).name("item3")
+                .description("item 3 description").reusable(false).picUrl("randomUrl").build()
+        FoodItem foodItemFour = new FoodItemBuilder().id(4L).name("item4")
+                .description("item 4 description").reusable(false).picUrl("randomUrl").build()
+
+        and:
+        // add even foodItems to Inventory
+        InventoryItem inventoryItemOne = new InventoryItemBuilder().id(1L).userId(user).foodItem(foodItemTwo)
+                .quantity(5.0F).unit("grams").build()
+        InventoryItem inventoryItemTwo = new InventoryItemBuilder().id(2L).userId(user).foodItem(foodItemFour)
+                .quantity(5.0F).unit("grams").build()
+        userInventory.add(inventoryItemOne)
+        userInventory.add(inventoryItemTwo)
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        userService.getInventory(user, false) >> userInventory
+        recipeRepository.findAllPublic() >> recipeList
+
+        and:
+        // add odd foodItems to recipeItems
+        List<RecipeItem> recipeItemList = new ArrayList<RecipeItem>()
+        Recipe recipe = recipeList.get(0)
+        RecipeItem recipeItemOne = new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        RecipeItem recipeItemTwo = new RecipeItemBuilder().id(2L).foodItem(foodItemThree).recipe(recipe)
+                .measurementUnit("grams").quantity(5.0F).build()
+        recipeItemList.add(recipeItemOne)
+        recipeItemList.add(recipeItemTwo)
+        recipeItemRepository.findRecipeItemsByRecipe(_) >> Optional.of(recipeItemList)
+
+        and:
+        // add the 2 inventory items as subs for recipeItems
+        List<FoodItem> subItems1 = new ArrayList<>()
+        subItems1.add(foodItemTwo)
+        List<FoodItem> subItems2 = new ArrayList<>()
+        subItems2.add(foodItemFour)
+        foodService.getSubItems(_, 1L) >> subItems1
+        foodService.getSubItems(_, 3L) >> subItems1
+
+        and:
+        List<DislikedItem> userPreferences = new ArrayList<>()
+        dislikedItemRepository.findByUser(_) >> Optional.of(userPreferences)
+        recipeRatingRepository.countByRecipeId(_) >> Optional.of(0L)
+        recipeRatingRepository.getAverageReviewByRecipeId(_) >> Optional.of(0f)
+
+        when:
+        List<RecipeWithSub> recipeWithSubList = recipeService.getRecipeWithInventory(_ as String, RecipeService.DEFAULT_PAGE)
+
+        then:
+        recipeWithSubList.isEmpty() // expect empty list b/c recipes can't have > 1 sub item
+    }
 }

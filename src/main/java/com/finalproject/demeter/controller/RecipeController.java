@@ -20,6 +20,11 @@ public class RecipeController {
         this.recipeService = recipeService;
     }
 
+    /**
+     * Used to get all the recipes for a given page
+     * @param pageSettings - pagination settings a user has setup.
+     * @return A ResponseEntity that contains a list of recipes
+     * */
     @PostMapping
     List<Recipe> getAllRecipes(@RequestBody PaginationSetting pageSettings) {
         return recipeService.getAllRecipes(pageSettings);
@@ -57,38 +62,79 @@ public class RecipeController {
         return recipeService.getFavoriteRecipe(jwt);
     }
 
+    /**
+     * Used to get all the recipes items for a given recipe id
+     * @param id - recipeId
+     * @param jwt - Token needed to authenticate a user.
+     * @return A ResponseEntity that contains a list of recipes items
+     * */
     @GetMapping("/getRecipeItems")
     public ResponseEntity<?> getRecipeItemsByRecipeId(@RequestParam Long id, @RequestHeader("AUTHORIZATION") String jwt)
     {
         return recipeService.getRecipeItemsById(id, jwt);
     }
+
+    /**
+     * Used to get all a recipe by its id
+     * @param id - recipeId
+     * @return A ResponseEntity that contains a recipe
+     * */
     @GetMapping("/getRecipe")
     public ResponseEntity<?> getRecipeById(@RequestParam Long id) {
         return recipeService.getRecipeById(id);
     }
 
+    /**
+     * Used to add a personal recipe for a user
+     * @param jwt - Token needed to authenticate a user.
+     * @param newRecipe - dto RecipeUpload with a recipeName, description, and ingredient list
+     * @return A ResponseEntity that contains the status of the operation
+     * */
     @PostMapping("/uploadPersonalRecipe")
     public ResponseEntity<?> uploadPersonalRecipe(@RequestHeader("AUTHORIZATION") String jwt,
                                                   @RequestBody RecipeUpload newRecipe){
         return recipeService.uploadPersonalRecipe(jwt, newRecipe);
     }
 
+    /**
+     * Used to remove a personal recipe for a user
+     * @param jwt - Token needed to authenticate a user.
+     * @param recipeId - recipeId of a personalRecipe
+     * @return A ResponseEntity that contains the status of the operation
+     * */
     @PostMapping("/removePersonalRecipe")
     public ResponseEntity<?> removePersonalRecipe(@RequestHeader("AUTHORIZATION") String jwt,
                                                   @RequestBody Long recipeId){
         return recipeService.removePersonalRecipe(jwt, recipeId);
     }
+
+    /**
+     * Used to get a list of a users personal recipes
+     * @param jwt - Token needed to authenticate a user.
+     * @return A ResponseEntity that contains a list of recipes created by the user
+     * */
     @PostMapping("/getPersonalRecipes")
     public ResponseEntity<?> getPersonalRecipes(@RequestHeader("AUTHORIZATION") String jwt){
         return recipeService.getPersonalRecipes(jwt);
     }
 
+    /**
+     * Used to publish a recipe - adds it to public recipes and removes from personalRecipes
+     * @param jwt - Token needed to authenticate a user.
+     * @param recipeId - id of personalRecipe to publish
+     * @return A ResponseEntity that contains the status of the operation
+     * */
     @PostMapping("/publishPersonalRecipe")
     public ResponseEntity<?> publishPersonalRecipe(@RequestHeader("AUTHORIZATION") String jwt,
                                                    @RequestBody long recipeId) {
         return recipeService.publishPersonalRecipe(jwt, recipeId);
     }
 
+    /**
+     * Used to get recipes from the database
+     * @param requestObject - the object that contains the recipe query data.
+     * @return: A ResponseEntity entity with queried recipes
+     * */
     @PostMapping("/queryRecipes")
     public ResponseEntity<?> queryRecipes(@RequestBody HashMap<String, HashMap<String, String>> requestObject) {
         PaginationSetting pageSetting = recipeService.getPaginationSettings(requestObject);
@@ -96,6 +142,12 @@ public class RecipeController {
         return recipeService.getQueriedRecipes(query, pageSetting);
     }
 
+    /**
+     * Used to get recipes based on a users inventory
+     * @param jwt - Token needed to authenticate a user.
+     * @param paginationSetting - page settings.
+     * @return: A ResponseEntity that contains a list of recipes
+     * */
     @PostMapping("/recipeWithInventory")
     public ResponseEntity<?> getRecipesWithInventory(@RequestHeader("AUTHORIZATION") String jwt,
                                                      @RequestBody PaginationSetting paginationSetting) {
