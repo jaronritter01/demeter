@@ -33,17 +33,34 @@ public class InventoryController {
         this.foodService = foodService;
     }
 
+    /**
+     * This is used to get the minor items for a user
+     * @param jwt - the user's jwt token
+     * @return A ResponseEntity that contains a list of minor items
+     */
     @PostMapping("/getMinorItems")
     public ResponseEntity<?> getMinorItems(@RequestHeader("AUTHORIZATION") String jwt) {
         return userService.getMinorItems(jwt);
     }
 
+    /**
+     * This is used to mark a foodIdem as minor or remove it as minor for a user
+     * @param jwt - the user's jwt token
+     * @param item - dto FoodMark with the itemId and command
+     * @return A ResponseEntity that contains the status of the operation
+     */
     @PostMapping("/markItem")
     public ResponseEntity<String> markMinorItem(
             @RequestHeader("AUTHORIZATION") String jwt, @RequestBody FoodMark item) {
         return userService.markFoodItem(jwt, item.getItemId(), item.getCommand());
     }
 
+    /**
+     * This is used to get the update the inventoryItems of a user
+     * @param jwt - the user's jwt token
+     * @param item - dto UpdateInventory with a foodItem, quantity, and unit
+     * @return A ResponseEntity that contains the status of the operation
+     */
     @PostMapping("/updateInventory")
     public ResponseEntity<?> updateInventory(@RequestHeader("AUTHORIZATION") String jwt, @RequestBody UpdateInventory item) {
         Optional<User> user = userService.getUserFromJwtToken(jwt);
@@ -57,6 +74,11 @@ public class InventoryController {
         return response;
     }
 
+    /**
+     * This is used to get the inventoryItems inside a users inventory
+     * @param jwt - the user's jwt token
+     * @return A ResponseEntity that contains a list of inventoryItems
+     */
     @PostMapping("/getInventory")
     List<InventoryItem> getUserInventory(@RequestHeader("AUTHORIZATION") String jwt) {
         Optional<User> user = userService.getUserFromJwtToken(jwt);
