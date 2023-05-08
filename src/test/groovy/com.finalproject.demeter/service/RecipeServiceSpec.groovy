@@ -91,8 +91,7 @@ class RecipeServiceSpec extends Specification{
         reviewItem.setReview("Very good.")
         reviewItem.setStars(5)
         reviewItem.setReviewId(1001L)
-
-        recipeReview.setId(1001)
+        recipeReview.setId(1001L)
     }
 
     def "When a valid JWT is passed, but the user cannot be found, an error should be returned" () {
