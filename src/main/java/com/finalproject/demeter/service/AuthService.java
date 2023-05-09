@@ -88,6 +88,7 @@ public class AuthService {
             }
 
             userService.updateUserPassword(user, passwordUpdate.getNewPassword());
+            userService.removePasswordResetToken(passwordUpdate.getToken());
         }
         return new ResponseEntity<>(HttpStatus.ACCEPTED);
     }
