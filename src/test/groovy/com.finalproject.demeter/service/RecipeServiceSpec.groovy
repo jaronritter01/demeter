@@ -10,6 +10,8 @@ import com.finalproject.demeter.dao.Recipe
 import com.finalproject.demeter.dao.RecipeItem
 import com.finalproject.demeter.dao.RecipeReview
 import com.finalproject.demeter.dao.User
+import com.finalproject.demeter.dao.UserPreference
+import com.finalproject.demeter.dto.AddRecipeReview
 import com.finalproject.demeter.dto.PersonalRecipeItem
 import com.finalproject.demeter.dto.RecipeQuery
 import com.finalproject.demeter.dto.RecipeUpload
@@ -29,9 +31,11 @@ import com.finalproject.demeter.util.FavoriteRecipeBuilder
 import com.finalproject.demeter.util.FoodItemBuilder
 import com.finalproject.demeter.util.InventoryItemBuilder
 import com.finalproject.demeter.util.MinorItemBuilder
+import com.finalproject.demeter.util.PersonalRecipeBuilder
 import com.finalproject.demeter.util.PersonalRecipeItemBuilder
 import com.finalproject.demeter.util.RecipeBuilder
 import com.finalproject.demeter.util.RecipeItemBuilder
+import com.finalproject.demeter.util.UserPreferencesBuilder
 import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -86,9 +90,8 @@ class RecipeServiceSpec extends Specification{
 
         reviewItem.setReview("Very good.")
         reviewItem.setStars(5)
-        reviewItem.setReviewId(1001)
-
-        recipeReview.setId(1001)
+        reviewItem.setReviewId(1001L)
+        recipeReview.setId(1001L)
     }
 
     def "When a valid JWT is passed, but the user cannot be found, an error should be returned" () {
@@ -983,5 +986,282 @@ class RecipeServiceSpec extends Specification{
 
         then:
         recipeWithSubList.isEmpty() // expect empty list b/c recipes can't have > 1 sub item
+    }
+
+    def "When a valid JWT and recipe id are passed, recipe should be added to public and removed from personal list" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        recipeRepository.findById(_) >> recipeList.get(0)
+        personalRecipeRepository.findByUserAndRecipe(_,_) >> Optional.of(new PersonalRecipe())
+
+        when:
+        ResponseEntity ru = recipeService.publishPersonalRecipe(_ as String, 1L)
+
+        then:
+        1 * personalRecipeRepository.delete(_);
+        1 * recipeRepository.save(_)
+        ru.statusCode == HttpStatus.OK
+        ru.body == "Recipe was published"
+    }
+
+    def "When a valid JWT and invalid recipe id are passed, the recipe shouldn't be added to public" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        recipeRepository.findById(_) >> null
+
+        when:
+        ResponseEntity ru = recipeService.publishPersonalRecipe(_ as String, 1L)
+
+        then:
+        0 * personalRecipeRepository.delete(_);
+        0 * recipeRepository.save(_)
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "Recipe could not be found"
+    }
+
+    def "When an invalid JWT is passed, the recipe shouldn't be added to public recipes" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.empty()
+        recipeRepository.findById(_) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.publishPersonalRecipe(_ as String, 1L)
+
+        then:
+        0 * personalRecipeRepository.delete(_);
+        0 * recipeRepository.save(_)
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "User could not be found"
+    }
+
+    def "When a valid JWT is passed, list of personal recipes should be returned" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+
+        and:
+        List<PersonalRecipe> personalRecipeList = List.of(
+                new PersonalRecipeBuilder().id(1L).user(user).recipe(recipeList.get(0)).build()
+        )
+        personalRecipeRepository.findByUser(_) >> Optional.of(personalRecipeList)
+
+        and:
+        recipeRatingRepository.countByRecipeId(_) >> Optional.of(0L)
+        recipeRatingRepository.getAverageReviewByRecipeId(_) >> Optional.of(0f)
+
+        and:
+        List<FavoriteRecipe> personalRecipesAsRecipeList = List.of(recipeList.get(0))
+
+        when:
+        ResponseEntity ru = recipeService.getPersonalRecipes(_ as String)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == personalRecipesAsRecipeList
+    }
+
+    def "When an invalid JWT is passed, list of personal recipes should not be returned" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.getPersonalRecipes(_ as String)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == "No Recipes Found"
+    }
+
+    def "When a valid recipe id and JWT with no prefs is passed, list of recipe items should be returned" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        recipeRepository.findById(1L) >> Optional.of(recipeList.get(0))
+
+        and:
+        List<FavoriteRecipe> recipeItemList = List.of(
+                new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipeList.get(0))
+                        .measurementUnit("grams").quantity(5.0F).build()
+        )
+        recipeItemRepository.findRecipeItemsByRecipe(recipeList.get(0)) >> Optional.of(recipeItemList)
+
+        and:
+        userPreferenceRepository.findByUser(_) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeItemsById(1L, _ as String)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == Optional.of(recipeItemList)
+    }
+
+    def "When a valid recipe id and JWT with prefs is passed, list of recipe items should be returned" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        recipeRepository.findById(1L) >> Optional.of(recipeList.get(0))
+
+        and:
+        List<FavoriteRecipe> recipeItemList = List.of(
+                new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipeList.get(0))
+                        .measurementUnit("grams").quantity(5.0F).build()
+        )
+        recipeItemRepository.findRecipeItemsByRecipe(recipeList.get(0)) >> Optional.of(recipeItemList)
+
+        and:
+        UserPreference userPreference = new UserPreferencesBuilder().id(1L).user(user)
+                .isMetric(false).build()
+        userPreferenceRepository.findByUser(_) >> Optional.of(userPreference)
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeItemsById(1L, _ as String)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == Optional.of(recipeItemList)
+    }
+
+    def "When a valid recipe id and invalid JWT is passed, list of recipe items should be returned" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.empty()
+        recipeRepository.findById(1L) >> Optional.of(recipeList.get(0))
+
+        and:
+        List<FavoriteRecipe> recipeItemList = List.of(
+                new RecipeItemBuilder().id(1L).foodItem(foodItemOne).recipe(recipeList.get(0))
+                        .measurementUnit("grams").quantity(5.0F).build()
+        )
+        recipeItemRepository.findRecipeItemsByRecipe(recipeList.get(0)) >> Optional.of(recipeItemList)
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeItemsById(1L, _ as String)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == Optional.of(recipeItemList)
+    }
+
+    def "When an invalid recipe id passed, list of recipe items should not be returned" () {
+        given:
+        recipeRepository.findById(1L) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeItemsById(1L, _ as String)
+
+        then:
+        ru.statusCode == HttpStatus.NO_CONTENT
+        ru.body == "Recipe Not Found"
+    }
+
+    def "When an valid recipe id passed but no recipe items exist, list of recipe items should not be returned" () {
+        given:
+        recipeRepository.findById(1L) >> Optional.of(recipeList.get(0))
+
+        and:
+        recipeItemRepository.findRecipeItemsByRecipe(recipeList.get(0)) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeItemsById(1L, _ as String)
+
+        then:
+        ru.statusCode == HttpStatus.NO_CONTENT
+        ru.body == "No Recipe Items Found"
+    }
+
+    def "When a valid JWT, recipeReviewItem, and recipeReview is passed, review should be created" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        recipeRepository.findById(reviewItem.getReviewId()) >> recipeList.get(0)
+        AddRecipeReview addReviewItem = new AddRecipeReview()
+        addReviewItem.setReview("Very good.")
+        addReviewItem.setStars(5)
+        addReviewItem.setRecipeId(1001L)
+
+        when:
+        ResponseEntity ru = recipeService.addRecipeReview(_ as String, addReviewItem, new RecipeReview())
+
+        then:
+        1 * recipeRatingRepository.save(_)
+        ru.statusCode == HttpStatus.OK
+        ru.body == "Review was created"
+    }
+
+    def "When an invalid JWT is passed, review should not be created" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.empty()
+        recipeRepository.findById(reviewItem.getReviewId()) >> recipeList.get(0)
+        AddRecipeReview addReviewItem = new AddRecipeReview()
+        addReviewItem.setReview("Very good.")
+        addReviewItem.setStars(5)
+        addReviewItem.setRecipeId(1001L)
+
+        when:
+        ResponseEntity ru = recipeService.addRecipeReview(_ as String, addReviewItem, new RecipeReview())
+
+        then:
+        0 * recipeRatingRepository.save(_)
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "User cannot be found"
+    }
+
+    def "When a valid JWT but invalid reviewItem is passed, review should not be created" () {
+        given:
+        userService.getUserFromJwtToken(_) >> Optional.of(user)
+        AddRecipeReview addReviewItem = new AddRecipeReview()
+        addReviewItem.setStars(0)
+
+        when:
+        ResponseEntity ru = recipeService.addRecipeReview(_ as String, addReviewItem, new RecipeReview())
+
+        then:
+        0 * recipeRatingRepository.save(_)
+        ru.statusCode == HttpStatus.BAD_REQUEST
+        ru.body == "Stars could not be set"
+    }
+
+    def "When a valid recipe review id is given, review should be returned" () {
+        given:
+        recipeRatingRepository.findById(1L) >> Optional.of(recipeReview)
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeReview(1L)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == Optional.of(recipeReview)
+    }
+
+    def "When an invalid recipe review id is given, review should not be returned" () {
+        given:
+        recipeRatingRepository.findById(1L) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeReview(1L)
+
+        then:
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "Recipe Review does not exist for this id"
+    }
+
+    def "When a valid recipe id is given, review list should be returned" () {
+        given:
+        recipeRatingRepository.findById(1L) >> Optional.of(List.of(recipeReview))
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeReview(1L)
+
+        then:
+        ru.statusCode == HttpStatus.OK
+        ru.body == Optional.of(List.of(recipeReview))
+    }
+
+    def "When an invalid recipe id is given, review list should not be returned" () {
+        given:
+        recipeRatingRepository.findById(1L) >> Optional.empty()
+
+        when:
+        ResponseEntity ru = recipeService.getRecipeReview(1L)
+
+        then:
+        ru.statusCode == HttpStatus.NOT_FOUND
+        ru.body == "Recipe Review does not exist for this id"
     }
 }
