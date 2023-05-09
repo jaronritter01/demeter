@@ -506,4 +506,17 @@ public class UserService implements UserDetailsService {
 
         return inventory;
     }
+
+    /**
+     * Remove a password reset token after it's been used.
+     * @param token passwordResetToken.
+     * */
+    public void removePasswordResetToken(String token) {
+        Optional<PasswordResetToken> passwordResetToken = passwordTokenRepository.findByToken(token);
+        if (passwordResetToken.isEmpty()) {
+            return;
+        }
+
+        passwordTokenRepository.delete(passwordResetToken.get());
+    }
 }

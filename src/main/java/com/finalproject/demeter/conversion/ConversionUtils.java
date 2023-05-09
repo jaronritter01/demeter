@@ -20,6 +20,11 @@ public class ConversionUtils {
     private static final WeightUnit weightUnit = WeightUnit.DEFAULT;
     private static final Logger LOGGER = LoggerFactory.getLogger(ConversionUtils.class);
 
+    /**
+     * Converts a users inventory to imperial or metric
+     * @param inventory - list of inventoryItems to convert
+     * @param isMetric - boolean to determine if metric or imperial
+     * */
     public static void convertInventory(List<InventoryItem> inventory, boolean isMetric) {
         for (InventoryItem item : inventory) {
             try {
@@ -33,6 +38,11 @@ public class ConversionUtils {
         }
     }
 
+    /**
+     * Converts recipeItems to imperial or metric
+     * @param items - list of RecipeItem to convert
+     * @param isMetric - boolean to determine if metric or imperial
+     * */
     public static void convertRecipeItems(List<RecipeItem> items, boolean isMetric) {
         for (RecipeItem item : items) {
             try {
@@ -65,6 +75,13 @@ public class ConversionUtils {
         return new MeasurementsBuilder().units("default").quantity(0F).build();
     }
 
+    /**
+     * Used to convert standard units to non-standard units.
+     * @param unitToConvert the unit of the measurement that needs to be converted.
+     * @param quantity the quantity that needs converted.
+     * @param isMetric - boolean to determine if metric or imperial
+     * @return a Measurements DTO with the converted measurements.
+     * */
     public static Measurements convertFromStandardUnit(String unitToConvert, Float quantity, boolean isMetric)
             throws Exception {
         Unit initialUnit = null;
@@ -94,6 +111,12 @@ public class ConversionUtils {
         return new MeasurementsBuilder().units(returnUnit).quantity(quantity).build();
     }
 
+    /**
+     * Used to get a units string based on the inputted unit
+     * @param unit - the unit of measurement
+     * @param quantity the quantity that needs converted.
+     * @return a standardized unit String.
+     * */
     private static String getUnitString(Unit unit, Float quantity) {
         if (unit.equals(LengthUnit.IN)) {
             return "in";
@@ -156,6 +179,11 @@ public class ConversionUtils {
         return "default";
     }
 
+    /**
+     * Used to convert a given unit to a standardized metric unit
+     * @param unitToConvert - the unit of measurement to be converted
+     * @return a Unit.
+     * */
     private static Unit getUnitOutMetric(String unitToConvert) {
         return switch (unitToConvert.toLowerCase()) {
             case "m", "meter", "meters" -> LengthUnit.M;
@@ -168,6 +196,11 @@ public class ConversionUtils {
         };
     }
 
+    /**
+     * Used to convert a given unit to a standardized imperial unit
+     * @param unitToConvert - the unit of measurement to be converted
+     * @return a Unit.
+     * */
     private static Unit getUnitOutImperial(String unitToConvert) {
         return switch (unitToConvert.toLowerCase()) {
             case "m", "meter", "meters" -> LengthUnit.IN;
@@ -180,6 +213,11 @@ public class ConversionUtils {
         };
     }
 
+    /**
+     * Used to get standardized units
+     * @param unitToConvert - the unit of measurement to be converted
+     * @return a Unit.
+     * */
     private static Unit getUnitIn(String unitToConvert) {
         Unit volUnit = volumetricUnit.getUnitEnum(unitToConvert);
         Unit lenUnit = lengthUnit.getUnitEnum(unitToConvert);

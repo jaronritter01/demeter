@@ -237,7 +237,7 @@ public class RecipeService {
                 .findByUserAndRecipe(user.get().getId(), recipe.get().getId());
 
         if (personalRecipe.isEmpty()) {
-            return new ResponseEntity<>("Personal recipe could not be found", HttpStatus.OK);
+            return new ResponseEntity<>("Personal recipe could not be found", HttpStatus.NOT_FOUND);
         }
 
         // remove the personal recipe
@@ -247,7 +247,7 @@ public class RecipeService {
         recipe.get().setIsPublic(true);
         // Save recipe
         recipeRepository.save(recipe.get());
-        return new ResponseEntity<>("Recipe was published", HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>("Recipe was published", HttpStatus.OK);
     }
 
     /**
@@ -691,13 +691,20 @@ public class RecipeService {
 
     /**
      * creates a new recipe review based on inputted reviewItem
+     * @param jwtToken the passed JWT for a request.
      * @param reviewItem: DTO for adding a recipe review.
+     * @param recipeReview: recipe review object for creating recipe reviews
      * @return ResponseEntity with an error or success message
      */
-    public ResponseEntity<String> addRecipeReview(String jwt, AddRecipeReview reviewItem, RecipeReview recipeReview) {
+    public ResponseEntity<String> addRecipeReview(String jwtToken, AddRecipeReview reviewItem, RecipeReview recipeReview) {
+        Optional<User> userOpt = userService.getUserFromJwtToken(jwtToken);
+        if (userOpt.isEmpty()){
+            return new ResponseEntity<>("User cannot be found", HttpStatus.NOT_FOUND);
+        }
+
         recipeReview.setReview(reviewItem.getReview());
         recipeReview.setRecipe(recipeRepository.findById(reviewItem.getRecipeId()));
-        recipeReview.setUser(userService.getUserFromJwtToken(jwt).get());
+        recipeReview.setUser(userService.getUserFromJwtToken(jwtToken).get());
 
         try {
             recipeReview.setStars(reviewItem.getStars());
