@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 public class MailService {
     private MessageSource messages;
     private JavaMailSender mailSender;
+    private final String FRONT_END_URL = "https://mykitchenapp.co/";
 
     @Value("${spring.mail.username}") String supportEmail;
 
@@ -33,7 +34,7 @@ public class MailService {
 
     public String getAppUrl(HttpServletRequest request) {
         // This will need to be updated to have the url of the front end
-        return "http://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+        return "http://" + FRONT_END_URL + request.getContextPath();
     }
 
     private SimpleMailMessage constructEmail(String subject, String body, User user) {
