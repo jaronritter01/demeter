@@ -9,6 +9,7 @@ import com.finalproject.demeter.dao.PersonalRecipe
 import com.finalproject.demeter.dao.Recipe
 import com.finalproject.demeter.dao.RecipeItem
 import com.finalproject.demeter.dao.RecipeReview
+import com.finalproject.demeter.dao.Substitution
 import com.finalproject.demeter.dao.User
 import com.finalproject.demeter.dao.UserPreference
 import com.finalproject.demeter.dto.AddRecipeReview
@@ -26,6 +27,7 @@ import com.finalproject.demeter.repository.PersonalRecipeRepository
 import com.finalproject.demeter.repository.RecipeItemRepository
 import com.finalproject.demeter.repository.RecipeRatingRepository
 import com.finalproject.demeter.repository.RecipeRepository
+import com.finalproject.demeter.repository.SubstitutionsRepository
 import com.finalproject.demeter.repository.UserPreferenceRepository
 import com.finalproject.demeter.util.DislikedItemBuilder
 import com.finalproject.demeter.util.FavoriteRecipeBuilder
@@ -56,9 +58,11 @@ class RecipeServiceSpec extends Specification{
     FoodService foodService = Mock()
     UserPreferenceRepository userPreferenceRepository = Mock()
     InventoryRepository inventoryRepository = Mock()
+    SubstitutionsRepository substitutionsRepository = Mock()
     RecipeService recipeService = new RecipeService(recipeRepository, recipeItemRepository, recipeRatingRepository,
             userService, foodItemRepository, personalRecipeRepository, dislikedItemRepository, minorItemRepository,
-            favoriteRecipeRepository, foodService, userPreferenceRepository, inventoryRepository)
+            favoriteRecipeRepository, foodService, userPreferenceRepository, inventoryRepository,
+            substitutionsRepository)
     User user = new User()
     FoodItem foodItemOne = null
     FoodItem foodItemTwo = null
@@ -96,16 +100,67 @@ class RecipeServiceSpec extends Specification{
         recipeReview.setId(1001L)
     }
 
-    def "When a user has the ingredients to make a recipe, it should return true" () {
+    def "When a user is missing 2 or more items with one labeled as minor and 1 sub, it should return true" () {
         given:
         Set<Long> recipeItemIds = Set.of(1L, 2L, 3L)
         recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(_) >> recipeItemIds
-        Set<Long> inventoryItemIds = Set.of(1L, 2L, 3L, 4L, 5L)
+        Set<Long> inventoryItemIds = Set.of(1L, 4L, 5L)
+        inventoryRepository.findInventoryItemsIdByUser(_) >> inventoryItemIds
+        Set<Long> dislikedItems = Set.of(8L)
+        dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
+        Set<Long> minorItems = Set.of(2L)
+        minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+        Substitution sub = new Substitution()
+        sub.id = 6L
+        substitutionsRepository.findByMissingItemId(_) >> List.of(sub)
+
+        and:
+        RecipeWithSub recipeWithSub = new RecipeWithSub()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMadeFast(1L, user.id, recipeWithSub)
+
+        then:
+        canBeMade
+    }
+
+    def "When a user is missing 2 or more items even with subs, it should return false" () {
+        given:
+        Set<Long> recipeItemIds = Set.of(1L, 2L, 3L)
+        recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(_) >> recipeItemIds
+        Set<Long> inventoryItemIds = Set.of(1L, 4L, 5L)
         inventoryRepository.findInventoryItemsIdByUser(_) >> inventoryItemIds
         Set<Long> dislikedItems = Set.of(8L)
         dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
         Set<Long> minorItems = Set.of()
         minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+        Substitution sub = new Substitution()
+        sub.id = 6L
+        substitutionsRepository.findByMissingItemId(_) >> List.of(sub)
+
+        and:
+        RecipeWithSub recipeWithSub = new RecipeWithSub()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMadeFast(1L, user.id, recipeWithSub)
+
+        then:
+        !canBeMade
+    }
+
+    def "When a user does not have the ingredients but has a sub for the missing one, it should return true" () {
+        given:
+        Set<Long> recipeItemIds = Set.of(1L, 2L, 3L)
+        recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(_) >> recipeItemIds
+        Set<Long> inventoryItemIds = Set.of(1L, 3L, 4L, 5L)
+        inventoryRepository.findInventoryItemsIdByUser(_) >> inventoryItemIds
+        Set<Long> dislikedItems = Set.of(8L)
+        dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
+        Set<Long> minorItems = Set.of()
+        minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+        Substitution sub = new Substitution()
+        sub.id = 6L
+        substitutionsRepository.findByMissingItemId(_) >> List.of(sub)
 
         and:
         RecipeWithSub recipeWithSub = new RecipeWithSub()
@@ -127,6 +182,7 @@ class RecipeServiceSpec extends Specification{
         dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
         Set<Long> minorItems = Set.of()
         minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+        substitutionsRepository.findByMissingItemId(_) >> List.of()
 
         and:
         RecipeWithSub recipeWithSub = new RecipeWithSub()
@@ -148,6 +204,7 @@ class RecipeServiceSpec extends Specification{
         dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
         Set<Long> minorItems = Set.of()
         minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+        substitutionsRepository.findByMissingItemId(_) >> List.of()
 
         and:
         RecipeWithSub recipeWithSub = new RecipeWithSub()
@@ -169,6 +226,7 @@ class RecipeServiceSpec extends Specification{
         dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
         Set<Long> minorItems = Set.of()
         minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+        substitutionsRepository.findByMissingItemId(_) >> List.of()
 
         and:
         RecipeWithSub recipeWithSub = new RecipeWithSub()

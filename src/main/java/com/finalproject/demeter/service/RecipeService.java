@@ -38,6 +38,7 @@ public class RecipeService {
     private FoodService foodService;
     private UserPreferenceRepository userPreferenceRepository;
     private InventoryRepository inventoryRepository;
+    private SubstitutionsRepository substitutionsRepository;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
     private static final PaginationSetting DEFAULT_PAGE = new PaginationSettingBuilder()
@@ -81,7 +82,8 @@ public class RecipeService {
                          FoodItemRepository foodItemRepository, PersonalRecipeRepository personalRecipeRepository,
                          DislikedItemRepository dislikedItemRepository, MinorItemRepository minorItemRepository,
                          FavoriteRecipeRepository favoriteRecipeRepository, FoodService foodService,
-                         UserPreferenceRepository userPreferenceRepository, InventoryRepository inventoryRepository) {
+                         UserPreferenceRepository userPreferenceRepository, InventoryRepository inventoryRepository,
+                         SubstitutionsRepository substitutionsRepository) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
         this.recipeRatingRepository = recipeRatingRepository;
@@ -94,6 +96,7 @@ public class RecipeService {
         this.foodService = foodService;
         this.userPreferenceRepository = userPreferenceRepository;
         this.inventoryRepository = inventoryRepository;
+        this.substitutionsRepository = substitutionsRepository;
     }
 
     /**
@@ -453,26 +456,36 @@ public class RecipeService {
         // So if the resulting set is the same size as the recipe item set, all items are contained in both
         if (inventoryRecipeIntersection.size() == recipeItemIds.size()) return true;
 
-        // More than 1 item is missing from the intersection of inventory items and recipe items
-        if (recipeItemIds.size() - inventoryRecipeIntersection.size() > 1) return false;
-
         // Find what items are in the recipe that the inventory does not have
         Set<Long> requiredItems = SetUtils.difference(recipeItemIds, inventoryIds); // Should always be of len 1
 
+        //Get minor items
         Set<Long> minorItemIds = minorItemRepository.findMinorItemFoodIdsByUserId(userId);
 
+        // Find what items in the required ones are labeled as minor
         Set<Long> minorItemReqItemIntersection = SetUtils.intersection(requiredItems, minorItemIds);
 
-        // This looks like O(n) but it will only every loop once, so it's really O(1)
-        if (minorItemReqItemIntersection.size() == 1) {
-            Long foodItToReplace = 0L;
-            for (Long id : minorItemReqItemIntersection) foodItToReplace = id;
-            recipe.setIsSubbed(true);
-            recipe.setFoodIdToReplace(foodItToReplace);
-            return true;
-        }
+        // If all the missing items are minor items
+        if (minorItemReqItemIntersection.size() == requiredItems.size()) return true;
 
-        return false;
+        // The required items minus those covered by minor items
+        Set<Long> leftOver = SetUtils.difference(requiredItems, minorItemReqItemIntersection);
+
+        // Missing more than 1 item after checking if labeled as minor
+        if (leftOver.size() > 1) return false;
+
+        // Get the missing food item id
+        Long missingId = 0L;
+        for (Long id : leftOver) missingId = id;
+        if (missingId == 0L) return false;
+        // Get the sub item for missing food item
+        List<Substitution> subList = substitutionsRepository.findByMissingItemId(missingId);
+        if (subList.size() == 0) return false;
+        // fill in the correct info on the recipeWithSub item
+        recipe.setIsSubbed(true);
+        recipe.setSubbedId(subList.get(0).getId());
+        recipe.setFoodIdToReplace(missingId);
+        return true;
     }
 
     /**
