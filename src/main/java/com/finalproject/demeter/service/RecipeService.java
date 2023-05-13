@@ -485,6 +485,7 @@ public class RecipeService {
         recipe.setIsSubbed(true);
         recipe.setSubbedId(subList.get(0).getId());
         recipe.setFoodIdToReplace(missingId);
+
         return true;
     }
 
