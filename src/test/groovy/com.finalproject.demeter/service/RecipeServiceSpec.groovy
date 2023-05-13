@@ -20,6 +20,7 @@ import com.finalproject.demeter.dto.UpdateRecipeReview
 import com.finalproject.demeter.repository.DislikedItemRepository
 import com.finalproject.demeter.repository.FavoriteRecipeRepository
 import com.finalproject.demeter.repository.FoodItemRepository
+import com.finalproject.demeter.repository.InventoryRepository
 import com.finalproject.demeter.repository.MinorItemRepository
 import com.finalproject.demeter.repository.PersonalRecipeRepository
 import com.finalproject.demeter.repository.RecipeItemRepository
@@ -54,9 +55,10 @@ class RecipeServiceSpec extends Specification{
     MinorItemRepository minorItemRepository = Mock()
     FoodService foodService = Mock()
     UserPreferenceRepository userPreferenceRepository = Mock()
+    InventoryRepository inventoryRepository = Mock()
     RecipeService recipeService = new RecipeService(recipeRepository, recipeItemRepository, recipeRatingRepository,
             userService, foodItemRepository, personalRecipeRepository, dislikedItemRepository, minorItemRepository,
-            favoriteRecipeRepository, foodService, userPreferenceRepository)
+            favoriteRecipeRepository, foodService, userPreferenceRepository, inventoryRepository)
     User user = new User()
     FoodItem foodItemOne = null
     FoodItem foodItemTwo = null
@@ -92,6 +94,12 @@ class RecipeServiceSpec extends Specification{
         reviewItem.setStars(5)
         reviewItem.setReviewId(1001L)
         recipeReview.setId(1001L)
+    }
+
+    def "When a user has the ingredients to make a recipe, it should return true" () {
+        given:
+        Set<Long> recipeItemIds = Set.of(1L, 2L, 3L);
+        Set<Long> inventoryItemIds = Set.of(1L, 2L, 3L, 4L, 5L);
     }
 
     def "When a valid JWT is passed, but the user cannot be found, an error should be returned" () {

@@ -4,6 +4,7 @@ import com.finalproject.demeter.conversion.ConversionUtils;
 import com.finalproject.demeter.dao.*;
 import com.finalproject.demeter.dto.*;
 import com.finalproject.demeter.repository.*;
+import com.finalproject.demeter.set.SetUtils;
 import com.finalproject.demeter.util.*;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ public class RecipeService {
     private FavoriteRecipeRepository favoriteRecipeRepository;
     private FoodService foodService;
     private UserPreferenceRepository userPreferenceRepository;
+    private InventoryRepository inventoryRepository;
     private final Pattern SPECIALCHARREGEX = Pattern.compile("[$&+:;=?@#|<>.^*()%!]");
     private final Logger LOGGER = LoggerFactory.getLogger(RecipeService.class);
     private static final PaginationSetting DEFAULT_PAGE = new PaginationSettingBuilder()
@@ -79,7 +81,7 @@ public class RecipeService {
                          FoodItemRepository foodItemRepository, PersonalRecipeRepository personalRecipeRepository,
                          DislikedItemRepository dislikedItemRepository, MinorItemRepository minorItemRepository,
                          FavoriteRecipeRepository favoriteRecipeRepository, FoodService foodService,
-                         UserPreferenceRepository userPreferenceRepository) {
+                         UserPreferenceRepository userPreferenceRepository, InventoryRepository inventoryRepository) {
         this.recipeRepository = recipeRepository;
         this.recipeItemRepository = recipeItemRepository;
         this.recipeRatingRepository = recipeRatingRepository;
@@ -91,6 +93,7 @@ public class RecipeService {
         this.favoriteRecipeRepository = favoriteRecipeRepository;
         this.foodService = foodService;
         this.userPreferenceRepository = userPreferenceRepository;
+        this.inventoryRepository = inventoryRepository;
     }
 
     /**
@@ -168,24 +171,24 @@ public class RecipeService {
             return new ArrayList<>();
         }
 
-        List<Recipe> recipeList = recipeRepository.findAllPublic();
-        Optional<User> user = userService.getUserFromJwtToken(jwtToken);
+        List<Recipe> recipeList = recipeRepository.findAllPublic(); // SQL
+        Optional<User> user = userService.getUserFromJwtToken(jwtToken); // O(1)
         List<InventoryItem> userInventory = null;
         Optional<List<DislikedItem>> userPreferences = Optional.empty();
         Optional<List<MinorItem>> userMinorItems = Optional.empty();
 
         if (user.isPresent()) {
-            userInventory = userService.getInventory(user.get(), false);
-            userPreferences = dislikedItemRepository.findByUser(user.get());
-            userMinorItems = Optional.ofNullable(minorItemRepository.findMinorItemsByUser(user.get()));
+            userInventory = userService.getInventory(user.get(), false); // SQL + O(1)
+            userPreferences = dislikedItemRepository.findByUser(user.get()); // O(1)
+            userMinorItems = Optional.ofNullable(minorItemRepository.findMinorItemsByUser(user.get())); //O(1)
         }
 
         if (userInventory != null) {
             List<RecipeWithSub> returnList = new ArrayList<>();
             RecipeWithSub recipeWithSub;
-            for (Recipe recipe : recipeList) {
+            for (Recipe recipe : recipeList) { // O(len(recipes)) - All public ones
                 recipeWithSub = new RecipeWithSub();
-                Optional<List<RecipeItem>> recipeItems = recipeItemRepository.findRecipeItemsByRecipe(recipe);
+                Optional<List<RecipeItem>> recipeItems = recipeItemRepository.findRecipeItemsByRecipe(recipe); // SQL
                 if (recipeItems.isPresent()) {
                     // check to see what recipes can be made or item subbed
                     if (canRecipeBeMade(userInventory, recipeItems.get(), userPreferences, userMinorItems, user.get(),
@@ -380,6 +383,98 @@ public class RecipeService {
     }
 
     /**
+     * Get a recipe list that takes into account the inventory of a given user.
+     * @param jwtToken: The user's jwt
+     * @param pageSettings: The pagination setting for the given request
+     * @return A list of reicpes that can be made user's given inventory.
+     * */
+    public List<RecipeWithSub> getRecipeWithInventoryFast(String jwtToken, PaginationSetting pageSettings) {
+        // Recipes and User inventory should already be internalized and standard
+        // This will likely need to be optimized.
+        if (pageSettings.getPageSize() <= 0 || pageSettings.getPageNumber() < 0) return new ArrayList<>();
+
+        List<Recipe> recipeList = recipeRepository.findAllPublic(); // SQL
+        Optional<User> user = userService.getUserFromJwtToken(jwtToken); // O(1)
+
+        if (user.isEmpty()) return new ArrayList<>();
+
+        List<RecipeWithSub> returnList = new ArrayList<>();
+        RecipeWithSub recipeWithSub;
+        for (Recipe recipe : recipeList) {
+            recipeWithSub = new RecipeWithSub();
+            if (canRecipeBeMadeFast(recipe.getId(), user.get().getId(), recipeWithSub)) {
+                fillRecipeWithSub(recipe, recipeWithSub);
+                returnList.add(recipeWithSub);
+            }
+        }
+        // Return the matched list
+        // Need to perform a bound check to make sure to not get array out of bounds
+        int startIndex = pageSettings.getPageNumber() * pageSettings.getPageSize();
+        int endIndex = startIndex + pageSettings.getPageSize();
+
+        if (startIndex >= recipeList.size()) {
+            return new ArrayList<>();
+        }
+
+        if (endIndex > returnList.size()) {
+            endIndex = returnList.size();
+        }
+
+        return returnList.subList(startIndex, endIndex);
+    }
+
+    public static void fillRecipeWithSub(Recipe recipe, RecipeWithSub recipeWithSub) {
+
+    }
+
+    /**
+     * Check to see if a recipe can be made using set logic.
+     * @param recipeId the id of the recipe to check.
+     * @param userId the id of the user to check against.
+     * @param recipe passed in recipe to be marked in case of subbed item.
+     * @return true if the recipe can be made for a given user.
+     * */
+    private boolean canRecipeBeMadeFast(Long recipeId, Long userId, RecipeWithSub recipe) {
+        // Need recipe item food id's, User Inventory Item Ids, minor items, disliked items
+        Set<Long> recipeItemIds = recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(recipeId);
+        // The recipe has no items
+        if (recipeItemIds.size() == 0) return false;
+
+        Set<Long> dislikedItemIds = dislikedItemRepository.findDislikedItemFoodIdsByUserId(userId);
+        Set<Long> dislikedItemIntersection = SetUtils.intersection(recipeItemIds, dislikedItemIds);
+        // If the recipe contains a disliked item
+        if (dislikedItemIntersection.size() != 0) return false;
+
+        Set<Long> inventoryIds = inventoryRepository.findInventoryItemsIdByUser(userId);
+        Set<Long> inventoryRecipeIntersection = SetUtils.intersection(recipeItemIds, inventoryIds);
+        // If the inventory contains all the items of the recipe
+        // This works because the intersection of two sets can never be larger than the smallest of the two sets
+        // So if the resulting set is the same size as the recipe item set, all items are contained in both
+        if (inventoryRecipeIntersection.size() == recipeItemIds.size()) return true;
+
+        // More than 1 item is missing from the intersection of inventory items and recipe items
+        if (recipeItemIds.size() - inventoryRecipeIntersection.size() > 1) return false;
+
+        // Find what items are in the recipe that the inventory does not have
+        Set<Long> requiredItems = SetUtils.difference(recipeItemIds, inventoryIds); // Should always be of len 1
+
+        Set<Long> minorItemIds = minorItemRepository.findMinorItemFoodIdsByUserId(userId);
+
+        Set<Long> minorItemReqItemIntersection = SetUtils.intersection(requiredItems, minorItemIds);
+
+        // This looks like O(n) but it will only every loop once, so it's really O(1)
+        if (minorItemReqItemIntersection.size() == 1) {
+            Long foodItToReplace = 0L;
+            for (Long id : minorItemReqItemIntersection) foodItToReplace = id;
+            recipe.setIsSubbed(true);
+            recipe.setFoodIdToReplace(foodItToReplace);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * This checks a recipe against a user recipe to see if the recipe can be made.
      * @param userInventory: A given user's inventory.
      * @param recipeItems: The items required for a given recipe.
@@ -395,19 +490,19 @@ public class RecipeService {
         }
 
         boolean containsSubItem = false;
-        for (RecipeItem recipeItem : recipeItems) {
+        for (RecipeItem recipeItem : recipeItems) { // O(LR)
             long currentFoodItemId = recipeItem.getFoodItem().getId();
             Float recipeQuantity = recipeItem.getQuantity();
             // Loop through inventory to see if it exists
             boolean found = false;
-            for (InventoryItem inventoryItem : userInventory) {
+            for (InventoryItem inventoryItem : userInventory) { // O(LUI)
                 long currentInventoryItemId = inventoryItem.getFoodId().getId();
                 Float inventoryItemQuantity = inventoryItem.getQuantity();
                 if (currentFoodItemId == currentInventoryItemId && inventoryItemQuantity >= recipeQuantity) {
                     // If the user has preferences
                     if (userPreferences.isPresent()){
                         // If the items is not a disliked on, we can say the user has the item
-                        if (isNotDislikedItem(recipeItem.getFoodItem(), userPreferences.get())){
+                        if (isNotDislikedItem(recipeItem.getFoodItem(), userPreferences.get())){ // O(LDI)
                             found = true;
                             break;
                         }
@@ -419,8 +514,9 @@ public class RecipeService {
                     }
                 // check if a sub item already exists for the recipe or if the item is a minor item
                 } else if (!containsSubItem &&
-                        (minorItems.isEmpty() || !isAMinorItem(recipeItem.getFoodItem(), minorItems.get()))) {
+                        (minorItems.isEmpty() || !isAMinorItem(recipeItem.getFoodItem(), minorItems.get()))) { // O(LMI)
                     // if there are no other sub items and this item is not minor
+                    // O(LPSI)
                     Optional<List<FoodItem>> foodItemList = Optional.ofNullable(foodService.getSubItems(user, currentFoodItemId));
                     if (foodItemList.isPresent() && foodItemList.get().size() > 0) {
                         // mark item as subbed and add isSubbed to recipe
@@ -441,7 +537,7 @@ public class RecipeService {
                 }
 
                 // if the user does not have this item labeled as minor
-                if (!isAMinorItem(recipeItem.getFoodItem(), minorItems.get())) {
+                if (!isAMinorItem(recipeItem.getFoodItem(), minorItems.get())) { //O(LMI)
                     return false;
                 }
             }
@@ -472,7 +568,7 @@ public class RecipeService {
      * @return a boolean if the item is dislike by as user.
      * */
     private boolean isNotDislikedItem(FoodItem foodItem, List<DislikedItem> dislikedItems) {
-        for (DislikedItem dislikedItem : dislikedItems){
+        for (DislikedItem dislikedItem : dislikedItems){ // O(LDI)
             // If the food item has the same id, it has been marked as disliked
             if (foodItem.getId() == dislikedItem.getFoodItem().getId()){
                 return false;
