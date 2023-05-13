@@ -435,6 +435,7 @@ public class RecipeService {
      * @return true if the recipe can be made for a given user.
      * */
     private boolean canRecipeBeMadeFast(Long recipeId, Long userId, RecipeWithSub recipe) {
+        // Need to fix sub item logic
         // Need recipe item food id's, User Inventory Item Ids, minor items, disliked items
         Set<Long> recipeItemIds = recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(recipeId);
         // The recipe has no items

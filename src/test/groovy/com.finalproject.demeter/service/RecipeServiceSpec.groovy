@@ -98,8 +98,86 @@ class RecipeServiceSpec extends Specification{
 
     def "When a user has the ingredients to make a recipe, it should return true" () {
         given:
-        Set<Long> recipeItemIds = Set.of(1L, 2L, 3L);
-        Set<Long> inventoryItemIds = Set.of(1L, 2L, 3L, 4L, 5L);
+        Set<Long> recipeItemIds = Set.of(1L, 2L, 3L)
+        recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(_) >> recipeItemIds
+        Set<Long> inventoryItemIds = Set.of(1L, 2L, 3L, 4L, 5L)
+        inventoryRepository.findInventoryItemsIdByUser(_) >> inventoryItemIds
+        Set<Long> dislikedItems = Set.of(8L)
+        dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
+        Set<Long> minorItems = Set.of()
+        minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+
+        and:
+        RecipeWithSub recipeWithSub = new RecipeWithSub()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMadeFast(1L, user.id, recipeWithSub)
+
+        then:
+        canBeMade
+    }
+
+    def "When a user has the ingredients to make a recipe but dislikes and item in it, it should return false" () {
+        given:
+        Set<Long> recipeItemIds = Set.of(1L, 2L, 3L)
+        recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(_) >> recipeItemIds
+        Set<Long> inventoryItemIds = Set.of(1L, 2L, 3L, 4L, 5L)
+        inventoryRepository.findInventoryItemsIdByUser(_) >> inventoryItemIds
+        Set<Long> dislikedItems = Set.of(2L)
+        dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
+        Set<Long> minorItems = Set.of()
+        minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+
+        and:
+        RecipeWithSub recipeWithSub = new RecipeWithSub()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMadeFast(1L, user.id, recipeWithSub)
+
+        then:
+        !canBeMade
+    }
+
+    def "When a user does not have the ingredients to make a recipe, it should return false" () {
+        given:
+        Set<Long> recipeItemIds = Set.of(1L, 2L, 3L)
+        recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(_) >> recipeItemIds
+        Set<Long> inventoryItemIds = Set.of(1L, 3L, 4L, 5L)
+        inventoryRepository.findInventoryItemsIdByUser(_) >> inventoryItemIds
+        Set<Long> dislikedItems = Set.of(8L)
+        dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
+        Set<Long> minorItems = Set.of()
+        minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+
+        and:
+        RecipeWithSub recipeWithSub = new RecipeWithSub()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMadeFast(1L, user.id, recipeWithSub)
+
+        then:
+        !canBeMade
+    }
+
+    def "When a user has the ingredients to make a recipe, it should return true" () {
+        given:
+        Set<Long> recipeItemIds = Set.of(1L, 2L, 3L)
+        recipeItemRepository.findRecipeItemsFoodIdsByRecipeId(_) >> recipeItemIds
+        Set<Long> inventoryItemIds = Set.of(1L, 2L, 3L, 4L, 5L)
+        inventoryRepository.findInventoryItemsIdByUser(_) >> inventoryItemIds
+        Set<Long> dislikedItems = Set.of(8L)
+        dislikedItemRepository.findDislikedItemFoodIdsByUserId(_) >> dislikedItems
+        Set<Long> minorItems = Set.of()
+        minorItemRepository.findMinorItemFoodIdsByUserId(_) >> minorItems
+
+        and:
+        RecipeWithSub recipeWithSub = new RecipeWithSub()
+
+        when:
+        boolean canBeMade = recipeService.canRecipeBeMadeFast(1L, user.id, recipeWithSub)
+
+        then:
+        canBeMade
     }
 
     def "When a valid JWT is passed, but the user cannot be found, an error should be returned" () {
